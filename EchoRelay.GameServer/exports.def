@@ -1,0 +1,14 @@
+LIBRARY EchoRelay.GameServer
+EXPORTS
+   RadPluginInit							@1
+   RadPluginInitMemoryStatics				@2
+   RadPluginInitNonMemoryStatics			@3
+   RadPluginMain							@4
+   RadPluginSetAllocator					@5
+   RadPluginSetEnvironment					@6
+   RadPluginSetEnvironmentMethods			@7
+   RadPluginSetFileTypes					@8
+   RadPluginSetPresenceFactory				@9
+   RadPluginSetSymbolDebugMethodsMethod		@10
+   RadPluginShutdown						@11
+   ServerLib								@12
