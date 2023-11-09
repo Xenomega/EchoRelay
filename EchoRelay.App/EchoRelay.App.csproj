@@ -6,6 +6,8 @@
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
+    <RepositoryUrl>https://github.com/Xenomega/EchoRelay</RepositoryUrl>
+    <Authors>Xenomega (David Pokora)</Authors>
   </PropertyGroup>
 
   <ItemGroup>

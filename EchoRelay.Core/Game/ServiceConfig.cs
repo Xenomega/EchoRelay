@@ -47,10 +47,16 @@ namespace EchoRelay.Core.Game
         public string TransactionServiceHost { get; set; }
 
         /// <summary>
+        /// The filename of the server plugin (minus ".dll").
+        /// </summary>
+        [JsonProperty("server_plugin")]
+        public string? ServerPlugin { get; set; }
+
+        /// <summary>
         /// The environment/publisher lock to be used.
         /// </summary>
         [JsonProperty("publisher_lock")]
-        public string PublisherLock { get; set; }
+        public string? PublisherLock { get; set; }
 
         /// <summary>
         /// Additional properties of the resource. Each resource defines its own set of fields.
@@ -63,7 +69,7 @@ namespace EchoRelay.Core.Game
         /// <summary>
         /// Initializes a new <see cref="ServiceConfig"/>.
         /// </summary>
-        public ServiceConfig() : this(null, "", "", "", "", "", "")
+        public ServiceConfig() : this(null, "", "", "", "", "", null, null)
         {
             // Initialize our additional tokens.
             AdditionalData = new Dictionary<string, JToken>();
@@ -72,7 +78,7 @@ namespace EchoRelay.Core.Game
         /// <summary>
         /// Initializes a new <see cref="ServiceConfig"/> with the provided arguments.
         /// </summary>
-        public ServiceConfig(string? apiServiceHost, string configServiceHost, string loginServiceHost, string matchingServiceHost, string? serverdbServiceHost, string transactionServiceHost, string publisherLock)
+        public ServiceConfig(string? apiServiceHost, string configServiceHost, string loginServiceHost, string matchingServiceHost, string? serverdbServiceHost, string transactionServiceHost, string? publisherLock, string? serverPlugin)
         {
             // Set our provided arguments.
             ApiServiceHost = apiServiceHost;
@@ -81,6 +87,7 @@ namespace EchoRelay.Core.Game
             MatchingServiceHost = matchingServiceHost;
             ServerDBServiceHost = serverdbServiceHost;
             TransactionServiceHost = transactionServiceHost;
+            ServerPlugin = serverPlugin;
             PublisherLock = publisherLock;
 
             // Initialize our additional tokens.

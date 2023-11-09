@@ -4,6 +4,8 @@ This is a simple/rough C#.NET WinForms app which demonstrates some of the capabi
 
 To install this component, read the installation instructions within the solution's [README](../README.md).
 
+![EchoRelay](./Resources/screenshot.png)
+
 ## Features
 
 `EchoRelay.App` simply reflects the _some_ of the work done within `EchoRelay.Core`. Not all features are exposed or completed in this example.

@@ -57,6 +57,17 @@ namespace EchoRelay.Core.Server
         public string? ServerDBApiKey { get; }
 
         /// <summary>
+        /// Indicates whether game servers registering to ServerDB should be validated by performing
+        /// a raw ping request to them, at registration time.
+        /// </summary>
+        public bool ServerDBValidateServerEndpoint { get; }
+        /// <summary>
+        /// The timeout in milliseconds before failing game server validation, if <see cref="ServerDBValidateServerEndpointTimeout"/> was provided.
+        /// This is a timeout used individually for a send and receive operation.
+        /// </summary>
+        public int ServerDBValidateServerEndpointTimeout { get; }
+
+        /// <summary>
         /// Indicates whether the matching service should try to force the user into any available game server,
         /// in the event that there are not enough game servers to create the requested session.
         /// </summary>
@@ -74,7 +85,7 @@ namespace EchoRelay.Core.Server
         public ServerSettings(ushort port = 777, string apiServicePath = "/api", string configServicePath = "/config",
             string loginServicePath = "/login", string matchingServicePath = "/matching",
             string serverdbServicePath = "/serverdb", string transactionServicePath = "/transaction", TimeSpan? disconnectedSessionTimeout = null,
-            string? serverDbApiKey = null, bool forceIntoAnySessionIfCreationFails = false, bool favorPopulationOverPing = true)
+            string? serverDbApiKey = null, bool serverDBValidateServerEndpoint = false, int serverDBValidateServerEndpointTimeout = 3000, bool forceIntoAnySessionIfCreationFails = false, bool favorPopulationOverPing = true)
         {
             Port = port;
             ApiServicePath = apiServicePath;
@@ -86,6 +97,8 @@ namespace EchoRelay.Core.Server
 
             SessionDisconnectedTimeout = disconnectedSessionTimeout ?? TimeSpan.FromMinutes(1);
             ServerDBApiKey = string.IsNullOrEmpty(serverDbApiKey) ? null : serverDbApiKey;
+            ServerDBValidateServerEndpoint = serverDBValidateServerEndpoint;
+            ServerDBValidateServerEndpointTimeout = serverDBValidateServerEndpointTimeout;
             ForceIntoAnySessionIfCreationFails = forceIntoAnySessionIfCreationFails;
             FavorPopulationOverPing = favorPopulationOverPing;
         }
@@ -99,7 +112,7 @@ namespace EchoRelay.Core.Server
         /// <param name="serverConfig">Indicates whether sensitive gameserver-only fields should be included in the config.</param>
         /// <param name="publisherLock">The publisher/environment lock to generate with.</param>
         /// <returns>Returns the generated <see cref="ServiceConfig"/>.</returns>
-        public ServiceConfig GenerateServiceConfig(string address, bool serverConfig = true, string publisherLock = "rad15_live")
+        public ServiceConfig GenerateServiceConfig(string address, bool serverConfig = true, string publisherLock = "rad15_live", string? serverPlugin = null)
         {
             // Obtain our base host
             string webSocketHost = $"ws://{address}:{Port}";
@@ -120,7 +133,8 @@ namespace EchoRelay.Core.Server
                 matchingServiceHost: webSocketHost + MatchingServicePath,
                 serverdbServiceHost: serverConfig ? serverDBHost : null,
                 transactionServiceHost: webSocketHost + TransactionServicePath,
-                publisherLock: publisherLock
+                publisherLock: publisherLock,
+                serverPlugin: serverPlugin
                 );
         }
         #endregion

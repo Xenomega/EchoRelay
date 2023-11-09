@@ -29,6 +29,10 @@ namespace EchoRelay.App.Forms.Controls
 
         public void AddOrUpdateGameServer(RegisteredGameServer gameServer)
         {
+            // If the peer isn't connected, this might've been triggered out of order, do nothing.
+            if (!gameServer.Peer.Connected)
+                return;
+
             // Obtain an existing list view item for this game server, or create one.
             ListViewItem? listItem = null;
             if (!_items.TryGetValue(gameServer.ServerId, out listItem))
@@ -60,7 +64,7 @@ namespace EchoRelay.App.Forms.Controls
             {
                 listItem.SubItems[4].Text = "-";
             }
-            listItem.SubItems[5].Text = $"{gameServer.SessionPlayerCount}/{gameServer.SessionPlayerLimit}";
+            listItem.SubItems[5].Text = $"{gameServer.SessionPlayerCount}/{gameServer.SessionPlayerLimits.TotalPlayerLimit}";
             listItem.SubItems[6].Text = gameServer.SessionLobbyType.ToString();
             listItem.SubItems[7].Text = gameServer.SessionLocked.ToString();
             listItem.SubItems[8].Text = gameServer.SessionChannel?.ToString() ?? "-";
@@ -90,7 +94,7 @@ namespace EchoRelay.App.Forms.Controls
             listGameServers.ContextMenuStrip = listGameServers.SelectedItems.Count > 0 ? contextMenuGameServers : null;
         }
 
-        private void RefreshSelectedGameServer()
+        private async void RefreshSelectedGameServer()
         {
             // Obtain the selected item, if any.
             ListViewItem? selectedItem = null;
@@ -105,7 +109,7 @@ namespace EchoRelay.App.Forms.Controls
             {
                 // Create items for every player in the game server.
                 RegisteredGameServer selectedGameServer = (RegisteredGameServer)selectedItem.Tag;
-                var playersInfo = selectedGameServer.GetPlayers().Result;
+                var playersInfo = await selectedGameServer.GetPlayers();
                 foreach (var playerInfo in playersInfo)
                 {
                     // Create a list item for this player

@@ -1,4 +1,4 @@
-﻿using EchoRelay.Core.Server.Services.ServerDB;
+﻿using EchoRelay.Core.Game;
 
 namespace EchoRelay.Core.Test.Messages
 {

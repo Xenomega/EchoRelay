@@ -21,3 +21,8 @@ BOOL APIENTRY DllMain( HMODULE hModule,
     return TRUE;
 }
 
+__declspec(dllexport) void DetoursExportPlaceholder()
+{
+    // An export with ordinal number 1 is needed for this library to be loaded as a suspended process.
+
+}

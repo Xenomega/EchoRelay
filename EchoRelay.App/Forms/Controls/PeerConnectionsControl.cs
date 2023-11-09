@@ -29,6 +29,10 @@ namespace EchoRelay.App.Forms.Controls
 
         public void AddOrUpdatePeer(Peer peer)
         {
+            // If the peer isn't connected, this might've been triggered out of order, do nothing.
+            if (!peer.Connected)
+                return;
+
             // Obtain an existing list view item for this peer, or create one.
             ListViewItem? listItem = null;
             if (!_items.TryGetValue(peer.Id, out listItem))

@@ -7,7 +7,7 @@ namespace EchoRelay.Core.Game
     /// </summary>
     public abstract class GameLauncher
     {
-        public static void Launch(string executableFilePath, LaunchRole role = LaunchRole.Client, bool windowed = false, bool spectatorStream = false, bool moderator = false, bool noOVR = false, bool headless = false, List<string>? additionalArgs = null)
+        public static void Launch(string executableFilePath, LaunchRole role = LaunchRole.Client, bool windowed = false, bool spectatorStream = false, bool moderator = false, bool noOVR = false, bool headless = false, uint? timeStep = null, List<string>? additionalArgs = null)
         {
             // Create a list of arguments
             List<string> args = additionalArgs ?? new List<string>();
@@ -35,6 +35,11 @@ namespace EchoRelay.Core.Game
                 args.Add("-noovr");
             if (headless)
                 args.Add("-headless");
+            if(timeStep.HasValue)
+            {
+                args.Add("-timestep");
+                args.Add(timeStep.Value.ToString());
+            }
 
             // Start the process with our provided arguments.
             Process.Start(executableFilePath, args);

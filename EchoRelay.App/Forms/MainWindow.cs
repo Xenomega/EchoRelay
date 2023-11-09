@@ -10,6 +10,9 @@ using EchoRelay.Core.Server.Services;
 using EchoRelay.Core.Server.Storage;
 using EchoRelay.Core.Server.Storage.Filesystem;
 using System.Net;
+using System.Net.Sockets;
+using System.Reflection;
+using System.Runtime.CompilerServices;
 
 namespace EchoRelay
 {
@@ -44,6 +47,11 @@ namespace EchoRelay
         public MainWindow()
         {
             InitializeComponent();
+
+            // Append the assembly version to the window title.
+            Version? assemblyVersion = this.GetType().Assembly.GetName().Version;
+            if (assemblyVersion != null)
+                Text += $" v{assemblyVersion.ToString(3)}";
 
             // Store the original window title
             OriginalWindowTitle = this.Text;
@@ -105,6 +113,8 @@ namespace EchoRelay
                 new ServerSettings(
                     port: Settings.Port,
                     serverDbApiKey: Settings.ServerDBApiKey,
+                    serverDBValidateServerEndpoint: Settings.ServerDBValidateGameServers ?? false,
+                    serverDBValidateServerEndpointTimeout: Settings.ServerDBValidateGameServersTimeout ?? 3000,
                     favorPopulationOverPing: Settings.MatchingPopulationOverPing,
                     forceIntoAnySessionIfCreationFails: Settings.MatchingForceIntoAnySessionOnFailure
                     )
@@ -119,6 +129,7 @@ namespace EchoRelay
             Server.OnServicePacketReceived += Server_OnServicePacketReceived;
             Server.ServerDBService.Registry.OnGameServerRegistered += Registry_OnGameServerRegistered;
             Server.ServerDBService.Registry.OnGameServerUnregistered += Registry_OnGameServerUnregistered;
+            Server.ServerDBService.OnGameServerRegistrationFailure += ServerDBService_OnGameServerRegistrationFailure; ;
         }
         #endregion
 
@@ -348,6 +359,8 @@ namespace EchoRelay
 
                 // Update server count on the game server tab.
                 tabGameServers.Text = $"Game Servers ({gameServersControl.GameServerCount})";
+
+                AppendLogText($"[{gameServer.Peer.Service.Name}] client({gameServer.Peer.Address}:{gameServer.Peer.Port}) registered game server (server_id={gameServer.ServerId}, region_symbol={gameServer.RegionSymbol}, version_lock={gameServer.VersionLock}, endpoint=<{gameServer.ExternalAddress}:{gameServer.Port}>)\n");
             });
         }
 
@@ -361,6 +374,19 @@ namespace EchoRelay
 
                 // Update server count on the game server tab.
                 tabGameServers.Text = gameServersControl.GameServerCount > 0 ? $"Game Servers ({gameServersControl.GameServerCount})" : "Game Servers";
+
+                // Add to our log
+                AppendLogText($"[{gameServer.Peer.Service.Name}] client({gameServer.Peer.Address}:{gameServer.Peer.Port}) unregistered game server (server_id={gameServer.ServerId}, region_symbol={gameServer.RegionSymbol}, version_lock={gameServer.VersionLock}, endpoint=<{gameServer.ExternalAddress}:{gameServer.Port}>)\n");
+            });
+        }
+
+        private void ServerDBService_OnGameServerRegistrationFailure(Peer peer, Core.Server.Messages.ServerDB.ERGameServerRegistrationRequest registrationRequest, string failureMessage)
+        {
+            // Invoke the UI thread to perform updates.
+            this.InvokeUIThread(() =>
+            {
+                // Add to our log
+                AppendLogText($"[{peer.Service.Name}] client({peer.Address}:{peer.Port}) failed to register game server: \"{failureMessage}\"\n");
             });
         }
 
@@ -423,46 +449,40 @@ namespace EchoRelay
             }
         }
 
-        private void serverHeadlessToolStripMenuItem_Click(object sender, EventArgs e)
+        private void serverHeadlessThrottledToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            // Launch game as a no OVR, spectator server.
-            GameLauncher.Launch(Settings.GameExecutableFilePath, GameLauncher.LaunchRole.Server, false, false, false, true, true, null);
+            // Launch game as a headless, no OVR server with the default timestep.
+            GameLauncher.Launch(Settings.GameExecutableFilePath, GameLauncher.LaunchRole.Server, noOVR: true, headless: true);
+        }
+
+        private void serverheadlessUnthrottledHighCPUToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            // Launch game as a headless, no OVR server with an unthrottled timestep (zero).
+            GameLauncher.Launch(Settings.GameExecutableFilePath, GameLauncher.LaunchRole.Server, noOVR: true, headless: true, timeStep: 0);
         }
 
         private void serverToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            // Launch game as a no OVR, spectator server.
-            GameLauncher.Launch(Settings.GameExecutableFilePath, GameLauncher.LaunchRole.Server, false, false, false, true, false, null);
+            // Launch game as a no OVR server.
+            GameLauncher.Launch(Settings.GameExecutableFilePath, GameLauncher.LaunchRole.Server, noOVR: true);
         }
 
         private void clientWindowedNoOVRToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            // Launch game as a spectator client.
-            GameLauncher.Launch(Settings.GameExecutableFilePath, GameLauncher.LaunchRole.Client, true, false, false, true, false, null);
+            // Launch game as a windowed no OVR client.
+            GameLauncher.Launch(Settings.GameExecutableFilePath, GameLauncher.LaunchRole.Client, windowed: true, noOVR: true);
         }
 
         private void clientWindowedOVRToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            // Launch game as a spectator client.
-            GameLauncher.Launch(Settings.GameExecutableFilePath, GameLauncher.LaunchRole.Client, true, false, false, false, false, null);
-        }
-
-        private void offlineWindowedNoOVRToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            // Launch game as a spectator offline user.
-            GameLauncher.Launch(Settings.GameExecutableFilePath, GameLauncher.LaunchRole.Client, true, false, false, true, false, null);
+            // Launch game as a windowed OVR client.
+            GameLauncher.Launch(Settings.GameExecutableFilePath, GameLauncher.LaunchRole.Client, windowed: true);
         }
 
         private void clientOVRToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            // Launch game as a normal client.
-            GameLauncher.Launch(Settings.GameExecutableFilePath, GameLauncher.LaunchRole.Client, false, false, false, false, false, null);
-        }
-
-        private void offlineOVRToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            // Launch game as a normal offline user.
-            GameLauncher.Launch(Settings.GameExecutableFilePath, GameLauncher.LaunchRole.Client, false, false, false, false, false, null);
+            // Launch game as a VR OVR client.
+            GameLauncher.Launch(Settings.GameExecutableFilePath, GameLauncher.LaunchRole.Client);
         }
 
         private void customToolStripMenuItem_Click(object sender, EventArgs e)

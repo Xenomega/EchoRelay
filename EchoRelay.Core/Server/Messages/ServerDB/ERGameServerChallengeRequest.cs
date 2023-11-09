@@ -5,6 +5,7 @@ namespace EchoRelay.Core.Server.Messages.ServerDB
     /// <summary>
     /// A message from server to game server, providing a challenge to the game server to complete prior to registration.
     /// NOTE: This is an unofficial message created for Echo Relay.
+    /// TODO: This is unused in favor of lazy SERVERDB API key authentication.
     /// </summary>
     public class ERGameServerChallengeRequest : Message
     {

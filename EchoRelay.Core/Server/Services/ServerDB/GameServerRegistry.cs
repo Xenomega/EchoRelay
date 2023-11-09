@@ -1,4 +1,5 @@
-﻿using EchoRelay.Core.Server.Messages.ServerDB;
+﻿using EchoRelay.Core.Game;
+using EchoRelay.Core.Server.Messages.ServerDB;
 using EchoRelay.Core.Utils;
 using System.Collections.Concurrent;
 using static EchoRelay.Core.Server.Messages.ServerDB.ERGameServerStartSession;
@@ -15,16 +16,16 @@ namespace EchoRelay.Core.Server.Services.ServerDB
 
         #region Events
         /// <summary>
-        /// Event a game server being registered/unregistered with the central server.
+        /// Event of a game server being registered/unregistered with the central server.
         /// </summary>
         /// <param name="gameServer">The <see cref="RegisteredGameServer"/> which was registered/unregistered with the central server.</param>
         public delegate void GameServerRegistrationChangedEventHandler(RegisteredGameServer gameServer);
         /// <summary>
-        /// Event a game server being registered.
+        /// Event of a game server being registered.
         /// </summary>
         public event GameServerRegistrationChangedEventHandler? OnGameServerRegistered;
         /// <summary>
-        /// Event a game server being unregistered.
+        /// Event of a game server being unregistered.
         /// </summary>
         public event GameServerRegistrationChangedEventHandler? OnGameServerUnregistered;
         #endregion
@@ -38,10 +39,9 @@ namespace EchoRelay.Core.Server.Services.ServerDB
         #endregion
 
         #region Functions
-        public RegisteredGameServer RegisterGameServer(Peer peer, ERGameServerRegistrationRequest request)
+        public RegisteredGameServer AddGameServer(RegisteredGameServer registeredGameServer)
         {
-            // Create a new registered server and set it in our lookup.
-            RegisteredGameServer registeredGameServer = new RegisteredGameServer(this, peer, request);
+            // Add the game server to our lookup
             RegisteredGameServers[registeredGameServer.ServerId] = registeredGameServer;
 
             // Fire the relevant event for the game server being registered.
@@ -77,7 +77,7 @@ namespace EchoRelay.Core.Server.Services.ServerDB
 
         public IEnumerable<RegisteredGameServer> FilterGameServers(int? findMax = null, ulong? serverId = null, Guid? sessionId = null,
             HashSet<(uint InternalAddr, uint ExternalAddr)>? addresses = null, ushort? port = null,
-            long? gameTypeSymbol = null, long? levelSymbol = null, Guid? channel = null, bool? locked = null, LobbyType[]? lobbyTypes = null, bool unfilledServerOnly = true)
+            long? gameTypeSymbol = null, long? levelSymbol = null, Guid? channel = null, bool? locked = null, LobbyType[]? lobbyTypes = null, TeamIndex? requestedTeam = null, bool unfilledServerOnly = true)
         {
             // Filter through all game servers
             List<RegisteredGameServer> filteredGameServers = new List<RegisteredGameServer>();
@@ -108,7 +108,9 @@ namespace EchoRelay.Core.Server.Services.ServerDB
                         continue;
                     else if (lobbyTypes != null && !lobbyTypes.Contains(gameServer.SessionLobbyType))
                         continue;
-                    else if (unfilledServerOnly && gameServer.SessionPlayerCount >= gameServer.SessionPlayerLimit)
+                    else if (unfilledServerOnly && gameServer.SessionPlayerCount >= gameServer.SessionPlayerLimits.TotalPlayerLimit)
+                        continue;
+                    else if (unfilledServerOnly && requestedTeam != null && !gameServer.CheckTeamAvailability(requestedTeam.Value))
                         continue;
                 }
 

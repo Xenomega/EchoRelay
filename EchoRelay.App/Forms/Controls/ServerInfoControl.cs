@@ -1,4 +1,5 @@
 ﻿using EchoRelay.Core.Server;
+using EchoRelay.Core.Utils;
 using Newtonsoft.Json;
 
 namespace EchoRelay.App.Forms.Controls
@@ -28,7 +29,7 @@ namespace EchoRelay.App.Forms.Controls
                 if (server != null)
                 {
                     string hostName = server.PublicIPAddress?.ToString() ?? "localhost";
-                    rtbGeneratedServiceConfig.Text = JsonConvert.SerializeObject(server.Settings.GenerateServiceConfig(hostName), Formatting.Indented);
+                    rtbGeneratedServiceConfig.Text = JsonConvert.SerializeObject(server.Settings.GenerateServiceConfig(hostName, serverConfig: true), Formatting.Indented, StreamIO.JsonSerializerSettings);
                 }
                 else
                 {

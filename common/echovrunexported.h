@@ -9,10 +9,16 @@ namespace EchoVR
 	CHAR* g_GameBaseAddress = (CHAR*)GetModuleHandle(NULL);
 
 	/// <summary>
+	/// Obtains a pool item/block/memory page from a given pool for the given index.
+	/// </summary>
+	typedef BYTE* PoolFindItemFunc(PVOID pool, UINT64 index);
+	PoolFindItemFunc* PoolFindItem = (PoolFindItemFunc*)(g_GameBaseAddress + 0x2CA9E0);
+
+	/// <summary>
 	/// Registers a callback for a certain type of websocket message.
 	/// </summary>
-	/// <returns>None</returns>
-	typedef VOID TcpBroadcasterListenFunc(
+	/// <returns>An identifier for the callback registration, to be used for unregistering.</returns>
+	typedef UINT16 TcpBroadcasterListenFunc(
 		EchoVR::TcpBroadcaster* broadcaster,
 		EchoVR::SymbolId messageId,
 		INT64 unk1,
@@ -22,6 +28,42 @@ namespace EchoVR
 		BOOL prepend
 	);
 	TcpBroadcasterListenFunc* TcpBroadcasterListen = (TcpBroadcasterListenFunc*)(g_GameBaseAddress + 0xF81100);
+
+	/// <summary>
+	/// Unregisters a callback for a certain type of websocket message, using the return value from its registration.
+	/// </summary>
+	/// <returns>None</returns>
+	UINT64 TcpBroadcasterUnlisten(
+		EchoVR::TcpBroadcaster* broadcaster,
+		UINT16 cbResult
+	) 
+	{
+		// Obtain the listeners pool from the broadcaster structure.
+		BYTE* listeners = (BYTE*)broadcaster->data + 352;
+
+		// Obtain our block index and offset within it.
+		UINT64 blockCapacity = *(UINT64*)(listeners + 40);
+		UINT64 blockIndex = cbResult / blockCapacity;
+		UINT64 indexInBlock = cbResult % blockCapacity;
+
+		// Obtain the item from the pool
+		UINT64 itemPage = NULL;
+		if (blockIndex)
+		{
+			itemPage = *(UINT64*)(PoolFindItem(listeners, (blockIndex - 1) >> 1) + 8 * (blockIndex & 1));
+		}
+		else
+		{
+			itemPage = *(UINT64*)(listeners + 8);
+		}
+
+		// Free the item from the page at its given offset.
+		UINT64 itemData = itemPage + 16;
+		UINT64 result = itemData + (UINT32)(-((INT32)itemData) & 7);
+		UINT32* flags = (UINT32*)(result + (indexInBlock * 80) + 12);
+		*flags |= 1u; // mark the page as free
+		return result;
+	}
 
 	/// <summary>
 	/// Sends a message to a game server broadcaster.
@@ -56,10 +98,10 @@ namespace EchoVR
 	BroadcasterReceiveLocalEventFunc* BroadcasterReceiveLocalEvent = (BroadcasterReceiveLocalEventFunc*)(g_GameBaseAddress + 0xF87AA0);
 
 	/// <summary>
-	/// Listens for an event on the broadcaster.
+	/// Registers a callback for a certain type of game broadcaster message.
 	/// </summary>
-	/// <returns>TODO: Unverified, probably success result.</returns>
-	typedef UINT64 BroadcasterListenFunc(
+	/// <returns>An identifier for the callback registration, to be used for unregistering.</returns>
+	typedef UINT16 BroadcasterListenFunc(
 		EchoVR::Broadcaster* broadcaster,
 		EchoVR::SymbolId messageId,
 		BOOL isReliableMsgType,
@@ -67,6 +109,16 @@ namespace EchoVR
 		BOOL prepend
 	);
 	BroadcasterListenFunc* BroadcasterListen = (BroadcasterListenFunc*)(g_GameBaseAddress + 0xF80ED0);
+
+	/// <summary>
+	/// Unregisters a callback for a certain type of game broadcast message, using the return value from its registration.
+	/// </summary>
+	/// <returns>None</returns>
+	typedef UINT64 BroadcasterUnlistenFunc(
+		EchoVR::Broadcaster* broadcaster,
+		UINT16 cbResult
+	);
+	BroadcasterUnlistenFunc* BroadcasterUnlisten = (BroadcasterUnlistenFunc*)(g_GameBaseAddress + 0xF8DF20);
 
 	/// <summary>
 	/// Obtains a JSON string value(with a default fallback value if it could not be obtained).
@@ -146,27 +198,57 @@ namespace EchoVR
 	WriteLogFunc* WriteLog = (WriteLogFunc*)(g_GameBaseAddress + 0xEBE70);
 
 	/// <summary>
-	/// A wrapper for WriteLog, simplifying logging operations.
-	/// </summary>
-	/// <returns>None</returns>
-	VOID Log(EchoVR::LogLevel level, const CHAR* format, ...) {
-		va_list args;
-		va_start(args, format);
-		WriteLog(level, 0, format, args);
-		va_end(args);
-	}
-
-
-	/// <summary>
 	/// TODO: Seemingly parses an HTTP/HTTPS URI to be connected to.
 	/// </summary>
 	/// <returns>TODO: Unknown</returns>
-	typedef UINT64 HttpConnectFunc(VOID* unk, CHAR* uri);
+	typedef UINT64 HttpConnectFunc(
+		VOID* unk, 
+		CHAR* uri
+	);
 	HttpConnectFunc* HttpConnect = (HttpConnectFunc*)(g_GameBaseAddress + 0x1F60C0);
 
 	/// <summary>
 	/// Loads the local config (located at ./_local/config.json) for the provided game instance.
 	/// </summary>
-	typedef UINT64 LoadLocalConfigFunc(PVOID pGame);
+	typedef UINT64 LoadLocalConfigFunc(
+		PVOID pGame
+	);
 	LoadLocalConfigFunc* LoadLocalConfig = (LoadLocalConfigFunc*)(g_GameBaseAddress + 0x179EB0);
+
+	/// <summary>
+	/// Switches net game state to a given new state (loading level, logging in, logged in, lobby, etc).
+	/// </summary>
+	typedef VOID NetGameSwitchStateFunc(
+		PVOID pGame, 
+		NetGameState state
+	);
+	NetGameSwitchStateFunc* NetGameSwitchState = (NetGameSwitchStateFunc*)(g_GameBaseAddress + 0x1B8650);
+
+	/// <summary>
+	/// Schedules a return to the lobby in the net game.
+	/// </summary>
+	typedef VOID NetGameScheduleReturnToLobbyFunc(
+		PVOID pGame
+	);
+	NetGameScheduleReturnToLobbyFunc* NetGameScheduleReturnToLobby = (NetGameScheduleReturnToLobbyFunc*)(g_GameBaseAddress + 0x1A89F0);
+
+	/// <summary>
+	/// The game's definition for GetProcAddress.
+	/// Reference: https://learn.microsoft.com/en-us/windows/win32/api/libloaderapi/nf-libloaderapi-getprocaddress
+	/// </summary>
+	typedef FARPROC GetProcAddressFunc(
+		HMODULE hModule,
+		LPCSTR  lpProcName
+	);
+	GetProcAddressFunc* GetProcAddress = (GetProcAddressFunc*)(g_GameBaseAddress + 0xEAEF0);
+
+	/// <summary>
+	/// The game's definition for SetWindowTitle.
+	/// Reference: https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setwindowtexta
+	/// </summary>
+	typedef UINT64 SetWindowTextAFunc(
+		HWND hWnd, 
+		LPCSTR lpString
+	);
+	SetWindowTextAFunc* SetWindowTextA_ = (SetWindowTextAFunc*)(g_GameBaseAddress + 0x5105F0);
 }

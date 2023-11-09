@@ -60,6 +60,18 @@ namespace EchoRelay.App.Settings
         [JsonProperty("serverdb_api_key")]
         public string? ServerDBApiKey { get; set; }
 
+        /// <summary>
+        /// If true, performs raw ping requests to game servers before accepting registration, to ensure their ports are properly exposed.
+        /// </summary>
+        [JsonProperty("serverdb_validate_servers")]
+        public bool? ServerDBValidateGameServers { get; set; }
+
+        /// <summary>
+        /// The timeout in milliseconds for each send/receive step of the raw ping request enabled by <see cref="ServerDBValidateGameServers"/>.
+        /// </summary>
+        [JsonProperty("serverdb_validate_servers_timeout_ms")]
+        public int? ServerDBValidateGameServersTimeout { get; set; }
+
 
         /// <summary>
         /// Indicates whether the matching service should first prioritize populating game servers until full, or ping.

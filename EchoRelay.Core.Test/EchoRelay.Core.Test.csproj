@@ -7,6 +7,8 @@
 
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
+    <RepositoryUrl>https://github.com/Xenomega/EchoRelay</RepositoryUrl>
+    <Company>$(Authors)</Company>
   </PropertyGroup>
 
   <ItemGroup>

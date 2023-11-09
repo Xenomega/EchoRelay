@@ -6,29 +6,46 @@
 /// <summary>
 /// Indicates whether the patches have been applied (to avoid re-application).
 /// </summary>
-BOOL initialized = false;
+BOOL initialized = FALSE;
 
 /// <summary>
 /// A CLI argument flag indicating whether the game is booting as a dedicated server.
 /// </summary>
-BOOL isServer = false;
+BOOL isServer = FALSE;
 /// <summary>
 /// A CLI argument flag indicating whether the game is booting as an offline client.
 /// </summary>
-BOOL isOffline = false;
+BOOL isOffline = FALSE;
 /// <summary>
 /// A CLI argument flag indicating whether the game is booting in headless mode (no graphics/audio).
 /// </summary>
-BOOL isHeadless = false;
+BOOL isHeadless = FALSE;
 /// <summary>
 /// A CLI argument flag indicating whether the game is booting in a windowed mode, rather than with a VR headset.
 /// </summary>
-BOOL isWindowed = false;
+BOOL isWindowed = FALSE;
+
+/// <summary>
+/// Indicates whether the game was launched with `-noovr`.
+/// </summary>
+BOOL isNoOVR = FALSE;
+
+/// <summary>
+/// The window handle for the current game window.
+/// </summary>
+HWND hWindow = NULL;
 
 /// <summary>
 /// The local config stored in ./_local/config.json.
 /// </summary>
 EchoVR::Json* localConfig = NULL;
+
+/// <summary>
+/// A timestep value in ticks/updates per second, to be used for headless mode (due to lack of GPU/refresh rate throttling).
+/// If non-zero, sets the timestep override by the given tick rate per second.
+/// If zero, removes tick rate throttling.
+/// </summary>
+UINT64 headlessTimeStep = 120;
 
 /// <summary>
 /// Reports a fatal error with a message box, then exits the game.
@@ -123,6 +140,20 @@ VOID WriteLogHook(EchoVR::LogLevel logLevel, UINT64 unk, const CHAR* format, va_
 }
 
 /// <summary>
+/// A wrapper for WriteLog, simplifying logging operations.
+/// </summary>
+/// <returns>None</returns>
+VOID Log(EchoVR::LogLevel level, const CHAR* format, ...) {
+    va_list args;
+    va_start(args, format);
+    if (isHeadless)
+        WriteLogHook(level, 0, format, args);
+    else
+        EchoVR::WriteLog(level, 0, format, args);
+    va_end(args);
+}
+
+/// <summary>
 /// Patches the game to enable headless mode, spawning a console window and applying patches to avoid game crashes.
 /// </summary>
 /// <param name="pGame">The pointer to the instance of the game structure.</param>
@@ -171,6 +202,14 @@ VOID PatchEnableHeadless(PVOID pGame)
         0xEB, 0x41 // JMP 0x43
     };
     ProcessMemcpy(EchoVR::g_GameBaseAddress + 0x62CA91, pbPatch2, sizeof(pbPatch2));
+
+    // If a timestep is set as non-zero, patch to enable `-fixedtimestep`.
+    if (headlessTimeStep != 0)
+    {
+        // Set the flag for `-fixedtimestep`.
+        UINT64* flags = (UINT64*)((CHAR*)pGame + 2088);
+        *flags |= 0x2000000;
+    }
 }
 
 /// <summary>
@@ -291,6 +330,32 @@ VOID PatchDeadlockMonitor()
 }
 
 /// <summary>
+/// A detour hook for the game's method it uses to transition from one net game state to another.
+/// </summary>
+/// <param name="game">A pointer to the game instance.</param>
+/// <param name="state">The state to transition to.</param>
+/// <returns>None</returns>
+VOID NetGameSwitchStateHook(PVOID pGame, EchoVR::NetGameState state)
+{
+    // Hook the net game switch state function, so we can redirect "load level failed" to a ready state again.
+    // This way if a client requests a non-existent level, the game server library isn't unloaded due to a state
+    // transition to "load failed" (because the level failed to load)
+    if (isServer && state == EchoVR::NetGameState::LoadFailed)
+    {
+        // Schedule a return to lobby. We are already at lobby, but this will quickly end the session, removing
+        // all players, and start listening for a new one, to keep the server recycling itself appropriately.
+        // Note: This is an ugly hack, as the client will get an irrelevant connection failure message (server is full, 
+        // failed to connect, etc). But at least it doesn't cause the server to get stuck in a "not ready" state in some menu.
+        Log(EchoVR::LogLevel::Debug, "[ECHORELAY.PATCH] Dedicated server failed to load level. Resetting session to keep game server available.");
+        EchoVR::NetGameScheduleReturnToLobby(pGame);
+        return;
+    }
+
+    // Call the original function
+    EchoVR::NetGameSwitchState(pGame, state);
+}
+
+/// <summary>
 /// A detour hook for the game's method it uses to build CLI argument definitions. 
 /// Adds additional definitions to the structure, so that they may be parsed successfully without error.
 /// </summary>
@@ -303,13 +368,16 @@ UINT64 BuildCmdLineSyntaxDefinitionsHook(PVOID pGame, PVOID pArgSyntax)
 
     // Add our additional options
     EchoVR::AddArgSyntax(pArgSyntax, "-server", 0, 0, FALSE);
-    EchoVR::AddArgHelpString(pArgSyntax, "-server", "[patch] Run as a dedicated game server");
+    EchoVR::AddArgHelpString(pArgSyntax, "-server", "[EchoRelay] Run as a dedicated game server");
 
     EchoVR::AddArgSyntax(pArgSyntax, "-offline", 0, 0, FALSE);
-    EchoVR::AddArgHelpString(pArgSyntax, "-offline", "[patch] Run the game in offline mode");
+    EchoVR::AddArgHelpString(pArgSyntax, "-offline", "[EchoRelay] Run the game in offline mode");
 
     EchoVR::AddArgSyntax(pArgSyntax, "-windowed", 0, 0, FALSE);
-    EchoVR::AddArgHelpString(pArgSyntax, "-windowed", "[patch] Run the game with no headset, in a window");
+    EchoVR::AddArgHelpString(pArgSyntax, "-windowed", "[EchoRelay] Run the game with no headset, in a window");
+
+    EchoVR::AddArgSyntax(pArgSyntax, "-timestep", 1, 1, FALSE);
+    EchoVR::AddArgHelpString(pArgSyntax, "-timestep", "[EchoRelay] Sets the fixed update interval when using -headless (in ticks/updates per second). 0 = no fixed time step, 120 = default");
 
     return result;
 }
@@ -326,13 +394,23 @@ UINT64 PreprocessCommandLineHook(PVOID pGame)
     for (int i = 0; i < argc; i++)
     {
         if (lstrcmpW(argv[i], L"-server") == 0)
-            isServer = true;
+            isServer = TRUE;
         else if (lstrcmpW(argv[i], L"-offline") == 0)
-            isOffline = true;
+            isOffline = TRUE;
         else if (lstrcmpW(argv[i], L"-headless") == 0)
-            isHeadless = true;
+            isHeadless = TRUE;
         else if (lstrcmpW(argv[i], L"-windowed") == 0)
-            isWindowed = true;
+            isWindowed = TRUE;
+        else if (lstrcmpW(argv[i], L"-noovr") == 0)
+            isNoOVR = TRUE;
+        else if (lstrcmpW(argv[i], L"-timestep") == 0)
+        {
+            // Verify a timestep argument was provided.
+            if (i + 1 < argc)
+                headlessTimeStep = std::wcstoull((const WCHAR*)argv[i + 1], nullptr, 10);
+            else
+                FatalError("No argument provided for -timestep. You must provide a positive number for a fixed tick rate, or a zero value for unthrottled.", NULL);
+        }
     }
 
     // Verify server and offline flags are not enabled.
@@ -359,6 +437,10 @@ UINT64 PreprocessCommandLineHook(PVOID pGame)
     if (isServer)
         PatchEnableServer();
 
+    // Update the window title
+    if (hWindow != NULL && isNoOVR)
+        EchoVR::SetWindowTextA_(hWindow, "Echo VR - [DEMO]");
+
     // Run the original method
     UINT64 result = EchoVR::PreprocessCommandLine(pGame);
     return result;
@@ -370,6 +452,16 @@ UINT64 PreprocessCommandLineHook(PVOID pGame)
 /// <param name="pGame">A pointer to the game struct to load the config for.</param>
 UINT64 LoadLocalConfigHook(PVOID pGame)
 {
+    // If a timestep override was provided, configure it.
+    // This is placed here, as by this time, the structure to dereference will be initialized.
+    if (isHeadless && headlessTimeStep != 0)
+    {
+        // Patch the fixed time step based on tick count.
+        // Fixed time step is in microseconds, tick rate is per second.
+        UINT32* timeStep = (UINT32*)(*(CHAR**)(EchoVR::g_GameBaseAddress + 0x020A00E8) + 0x90);
+        *timeStep = 1000000 / headlessTimeStep;
+    }
+
     // Store a reference to the local config.
     localConfig = (EchoVR::Json*)((CHAR*)pGame + 0x63240);
     return EchoVR::LoadLocalConfig(pGame);
@@ -407,6 +499,68 @@ UINT64 HttpConnectHook(PVOID unk, CHAR* uri)
 }
 
 /// <summary>
+/// A detour hook for the game's method to wrap GetProcAddress.
+/// </summary>
+/// <param name="hModule">The module to get the procedure address from.</param>
+/// <param name="lpProcName">The exported procedure name.</param>
+/// <returns>The address of the procedure, or NULL if it was not found.</returns>
+FARPROC GetProcAddressHook(HMODULE hModule, LPCSTR lpProcName)
+{
+    // If this is a server, unloading pnsdemo.dll or pnsovr.dll currently causes dereferencing of freed memory 
+    // during a RadPluginShutdown call. This could be due to the timing on the patch for dedicated servers causing 
+    // some structures to initialize incorrectly or something.
+    // For now, we resolve this by simply force exiting the server.
+    
+    // If we're performing a plugin shutdown, check if this is a user platform DLL such as pnsdemo.dll or pnsovr.dll, 
+    // which exports a "Users" method.
+    if (isServer && strcmp(lpProcName, "RadPluginShutdown") == 0)
+    {
+        // If this is a user platform dll, exit the whole process with a success code instead of continuing to gracefully unload.
+        if (EchoVR::GetProcAddress(hModule, "Users") != NULL)
+            exit(0);
+    }
+
+    // Call the original function.
+    return EchoVR::GetProcAddress(hModule, lpProcName);
+}
+
+/// <summary>
+/// A detour hook for the game's definition of SetWindowTextA.
+/// </summary>
+/// <param name="hWnd">The window handle to update the title for.</param>
+/// <param name="lpString">The title string to be used.</param>
+/// <returns>True if successful, false otherwise.</returns>
+BOOL SetWindowTextAHook(HWND hWnd, LPCSTR lpString)
+{
+    // Store a reference to the window
+    hWindow = hWnd;
+
+    // Call the original function and return the result.
+    return EchoVR::SetWindowTextA_(hWnd, lpString);
+}
+
+/// <summary>
+/// Verifies the version of the game is supported.
+/// </summary>
+/// <returns>None</returns>
+BOOL VerifyGameVersion()
+{
+    // Definitions to read image file header.
+    #define IMG_SIGNATURE_OFFSET    0x3C
+    #define IMG_SIGNATURE_SIZE      0x04
+
+    // Obtain the image file header for the game.
+    DWORD* signatureOffset = (DWORD*)(EchoVR::g_GameBaseAddress + IMG_SIGNATURE_OFFSET);
+    IMAGE_FILE_HEADER* coffFileHeader = (IMAGE_FILE_HEADER*)(EchoVR::g_GameBaseAddress + (*signatureOffset + IMG_SIGNATURE_SIZE));
+    
+    // Verify the timestamp for Echo VR (version 34.4.631547.1).
+    // Timestamp should be Wednesday, May 3, 2023 10:28:06 PM.
+    // Note: For other executables, this may not hold. Reproducible builds have pushed this
+    // towards being a build signature. In any case, it works as a naive integrity check.
+    return coffFileHeader->TimeDateStamp == 0x6452dff6;
+}
+
+/// <summary>
 /// Initializes the patcher, executing startup patchs on the game and installing detours/hooks on various game functions.
 /// </summary>
 /// <returns>None</returns>
@@ -417,11 +571,18 @@ VOID Initialize()
         return;
     initialized = true;
 
+    // Verify the game version before patching
+    if (!VerifyGameVersion())
+        MessageBox(NULL, L"EchoRelay version check failed. Patches may fail to be applied. Verify you're running the correct version of Echo VR.", L"Echo Relay: Warning", MB_OK);
+
     // Patch our CLI argument options to add our additional options.
     PatchDetour(&(PVOID&)EchoVR::BuildCmdLineSyntaxDefinitions, BuildCmdLineSyntaxDefinitionsHook);
     PatchDetour(&(PVOID&)EchoVR::PreprocessCommandLine, PreprocessCommandLineHook);
+    PatchDetour(&(PVOID&)EchoVR::NetGameSwitchState, NetGameSwitchStateHook);
     PatchDetour(&(PVOID&)EchoVR::LoadLocalConfig, LoadLocalConfigHook);
     PatchDetour(&(PVOID&)EchoVR::HttpConnect, HttpConnectHook);
+    PatchDetour(&(PVOID&)EchoVR::GetProcAddress, GetProcAddressHook);
+    PatchDetour(&(PVOID&)EchoVR::SetWindowTextA_, SetWindowTextAHook);
 
     // Run some startup patches
     PatchNoOvrRequiresSpectatorStream();

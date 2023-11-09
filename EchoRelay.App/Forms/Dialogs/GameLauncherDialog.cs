@@ -1,5 +1,6 @@
 ﻿using EchoRelay.App.Settings;
 using EchoRelay.Core.Game;
+using System.Collections.Concurrent;
 
 namespace EchoRelay.App.Forms.Dialogs
 {
@@ -31,15 +32,36 @@ namespace EchoRelay.App.Forms.Dialogs
             GameLauncher.Launch(
                 executableFilePath: Settings.GameExecutableFilePath,
                 role: launchRole,
-                windowed: chkWindowed.Checked,
+                windowed: radioViewWindowed.Checked,
+                headless: radioViewHeadless.Checked,
+                noOVR: chkNoOVR.Checked,
                 spectatorStream: chkSpectatorStream.Checked,
                 moderator: chkModerator.Checked,
-                noOVR: chkNoOVR.Checked
+                timeStep: chkThrottleTimestep.Checked ? (uint)numThrottleTimestep.Value : null
                 );
 
             // Close the dialog
             DialogResult = DialogResult.OK;
             Close();
+        }
+
+        private void radioRoleServer_CheckedChanged(object sender, EventArgs e)
+        {
+            radioViewVR.Enabled = !radioRoleServer.Checked;
+            if (radioRoleServer.Checked && radioViewVR.Checked)
+                radioViewHeadless.Checked = true;
+        }
+
+        private void chkThrottleTimestep_CheckedChanged(object sender, EventArgs e)
+        {
+            numThrottleTimestep.Enabled = chkThrottleTimestep.Checked;
+        }
+
+        private void radioViewHeadless_CheckedChanged(object sender, EventArgs e)
+        {
+            chkThrottleTimestep.Enabled = radioViewHeadless.Checked;
+            if (!radioViewHeadless.Checked)
+                chkThrottleTimestep.Checked = false;
         }
     }
 }

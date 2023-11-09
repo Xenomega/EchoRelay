@@ -1,12 +1,14 @@
-﻿using EchoRelay.Core.Utils;
+﻿using EchoRelay.Core.Game;
+using EchoRelay.Core.Utils;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System.Security.Cryptography;
 
 namespace EchoRelay.Core.Server.Messages.ServerDB
 {
     /// <summary>
     /// A message from server to game server, indicating it should start a session on its end.
-    /// NOTE: This is an unofficial message created for Echo Relay.
+    /// NOTE: This is an unofficial message created for Echo Relay. It mimicks the LobbyStartSessionv4 game server broadcaster message.
     /// </summary>
     public class ERGameServerStartSession : Message
     {
@@ -22,19 +24,14 @@ namespace EchoRelay.Core.Server.Messages.ServerDB
         public Guid SessionId;
 
         /// <summary>
-        /// TODO: Unknown. In offline play, this is zero.
+        /// TODO: Unverified, suspected to be channel UUID.
         /// </summary>
-        public Guid Unk0;
+        public Guid Channel;
 
         /// <summary>
         /// The maximum amount of players allowed to join the lobby.
         /// </summary>
         public byte PlayerLimit;
-
-        /// <summary>
-        /// TODO: Unknown, this is some count for a struct that follows the JSON. The size per each is 0x24.
-        /// </summary>
-        public byte Unk2;
 
         private byte _lobbyType;
         /// <summary>
@@ -56,6 +53,11 @@ namespace EchoRelay.Core.Server.Messages.ServerDB
         /// The JSON settings associated with the session.
         /// </summary>
         public SessionSettings Settings;
+
+        /// <summary>
+        /// Information regarding entrants (e.g. including offline/local player ids, or AI bot platform ids).
+        /// </summary>
+        public EntrantDescriptor[] EntrantDescriptors;
         #endregion
 
         #region Constructor
@@ -65,6 +67,7 @@ namespace EchoRelay.Core.Server.Messages.ServerDB
         public ERGameServerStartSession()
         {
             Settings = new SessionSettings();
+            EntrantDescriptors = Array.Empty<EntrantDescriptor>();
         }
         /// <summary>
         /// Initializes a new <see cref="ERGameServerStartSession"/> with the provided arguments.
@@ -73,13 +76,14 @@ namespace EchoRelay.Core.Server.Messages.ServerDB
         /// <param name="playerLimit"></param>
         /// <param name="lobbyType"></param>
         /// <param name="settings"></param>
-        public ERGameServerStartSession(Guid sessionId, Guid unk0, byte playerLimit, LobbyType type, SessionSettings settings)
+        public ERGameServerStartSession(Guid sessionId, Guid channel, byte playerLimit, LobbyType type, SessionSettings settings, EntrantDescriptor[] entrantDescriptors = null)
         {
             SessionId = sessionId;
-            Unk0 = unk0;
+            Channel = channel;
             PlayerLimit = playerLimit;
             Type = type;
             Settings = settings;
+            EntrantDescriptors = entrantDescriptors ?? Array.Empty<EntrantDescriptor>();
         }
 
         #endregion
@@ -91,15 +95,30 @@ namespace EchoRelay.Core.Server.Messages.ServerDB
         /// <param name="io">The stream to read/write data from/to.</param>
         public override void Stream(StreamIO io)
         {
+            byte finalStructCount = (byte)EntrantDescriptors.Length;
             byte pad1 = 0;
 
+            // Read our data until the end of the session JSON.
             io.Stream(ref SessionId);
-            io.Stream(ref Unk0);
+            io.Stream(ref Channel);
             io.Stream(ref PlayerLimit);
-            io.Stream(ref Unk2);
+            io.Stream(ref finalStructCount);
             io.Stream(ref _lobbyType);
             io.Stream(ref pad1);
             io.StreamJSON(ref Settings, true, JSONCompressionMode.None);
+
+            // If we're reading, make sure our array is the correct size to stream into.
+            if (io.StreamMode == StreamMode.Read)
+                EntrantDescriptors = new EntrantDescriptor[finalStructCount];
+
+            // Stream the remaining data
+            for(int i = 0; i < EntrantDescriptors.Length; i++)
+            {
+                // If we're reading, make sure we have a valid item.
+                if (io.StreamMode == StreamMode.Read)
+                    EntrantDescriptors[i] = new EntrantDescriptor();
+                EntrantDescriptors[i].Stream(io);
+            }
         }
 
         public override string ToString()
@@ -163,6 +182,53 @@ namespace EchoRelay.Core.Server.Messages.ServerDB
             public override string ToString()
             {
                 return $"<appid={AppId}, gametype={GameType}, level={Level}>";
+            }
+        }
+
+        public class EntrantDescriptor : IStreamable
+        {
+            /// <summary>
+            /// TODO: Unknown, maybe a player session UUID?
+            /// </summary>
+            public Guid Unk0;
+            /// <summary>
+            /// The player identifier which the entrant descriptor describes.
+            /// </summary>
+            public XPlatformId PlayerId;
+            /// <summary>
+            /// TODO: Unknown flags.
+            /// Observed to be 0x0144BB8000 for player, 0x0044BB8000 for bot player id in public AI match.
+            /// </summary>
+            public ulong Flags;
+
+            /// <summary>
+            /// Creates a random bot entrant descriptor.
+            /// </summary>
+            public EntrantDescriptor()
+            {
+                Unk0 = SecureGuidGenerator.Generate();
+                PlayerId = new XPlatformId(PlatformCode.BOT, BitConverter.ToUInt64(RandomNumberGenerator.GetBytes(8)));
+                Flags = 0x0044BB8000;
+            }
+
+            /// <summary>
+            /// Creates an entrant desciptor with the provided arguments.
+            /// </summary>
+            /// <param name="unk0">TODO: Unknown</param>
+            /// <param name="playerId">The player identifier which the entrant descriptor corresponds to.</param>
+            /// <param name="flags">TODO: Some unknown flags</param>
+            public EntrantDescriptor(Guid unk0, XPlatformId playerId, ulong flags)
+            {
+                Unk0 = unk0;
+                PlayerId = playerId;
+                Flags = flags;
+            }
+
+            public void Stream(StreamIO io)
+            {
+                io.Stream(ref Unk0);
+                PlayerId.Stream(io);
+                io.Stream(ref Flags);
             }
         }
         #endregion

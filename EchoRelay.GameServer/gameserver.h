@@ -1,7 +1,7 @@
 #pragma once
 
 #include "pch.h"
-#include "EchoVR.h"
+#include "echovr.h"
 
 /// <summary>
 /// A symbol representing the game server's special websocket service.
@@ -44,8 +44,20 @@ public:
 	// Session related fields.
 
 	BOOL sessionActive;
-	EchoVR::LobbyType lobbyType;
 	UINT64 serverId;
 	EchoVR::SymbolId regionId;
 	EchoVR::SymbolId versionLock;
+
+
+	// Callbacks
+
+	UINT16 broadcastSessionStartCBHandle;
+	UINT16 broadcastSessionErrorCBHandle;
+
+	UINT16 tcpBroadcastRegSuccessCBHandle;
+	UINT16 tcpBroadcastRegFailureCBHandle;
+	UINT16 tcpBroadcastStartSessionCBHandle;
+	UINT16 tcpBroadcastPlayersAcceptedCBHandle; 
+	UINT16 tcpBroadcastPlayersRejectedCBHandle;
+	UINT16 tcpBroadcastSessionSuccessCBHandle;
 };

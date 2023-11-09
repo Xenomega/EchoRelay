@@ -6,28 +6,36 @@
 #include "gameserver.h"
 
 /// <summary>
-/// Connects to the ServerDB websocket service, a central service
-/// used to manage live, connected game servers and their sessions.
-/// The ServerDB service is to game servers, as the Matching service is to clients.
+/// A wrapper for WriteLog, simplifying logging operations.
 /// </summary>
-/// <param name="self">The game server library which should connect to ServerDB.</param>
-/// <param name="localConfig">The game config containing service endpoints (located in ./_local/config.json from the root of game folder).</param>
 /// <returns>None</returns>
-BOOL ConnectToServerDb(GameServerLib* self, EchoVR::Json* localConfig)
-{
-	// Obtain the serverdb URI from our config (or fall back to default)
-	CHAR* serverDbServiceUri = EchoVR::JsonValueAsString((EchoVR::Json*)localConfig, (CHAR*)"serverdb_host", (CHAR*)"ws://localhost:777/serverdb", false);
-	EchoVR::UriContainer serverDbUriContainer;
-	memset(&serverDbUriContainer, 0, sizeof(serverDbUriContainer));
-	if (EchoVR::UriContainerParse(&serverDbUriContainer, serverDbServiceUri) != ERROR_SUCCESS)
-	{
-		Log(EchoVR::LogLevel::Error, "[ECHORELAY.GAMESERVER] Failed to register game server: error parsing matching service URI");
-		return false;
-	}
+VOID Log(EchoVR::LogLevel level, const CHAR* format, ...) {
+	va_list args;
+	va_start(args, format);
+	EchoVR::WriteLog(level, 0, format, args);
+	va_end(args);
+}
 
-	// Connect to the serverdb service
-	self->tcpBroadcasterData->CreatePeer(&self->serverDbPeer, (const EchoVR::UriContainer*)&serverDbUriContainer);
-	return true;
+/// <summary>
+/// Subscribes to internal local events for a given message type. These are typically sent internally by the game
+/// to its self, or derived from connected peer's messages (UDP broadcast port forwards events). The provided
+/// function is used as a callback when a message of the type is received from any peer or onesself.
+/// </summary>
+/// <param name="self">The game server library which is listening for the message.</param>
+/// <param name="msgId">The 64-bit symbol used to describe a message type/identifier to listen for.</param>
+/// <param name="isMsgReliable">Indicates whether we are listening for events for messages sent over the reliable or mailbox game server message inbox types.</param>
+/// <param name="func">The function to use as callback when a broadcaster message of the given type is received.</param>
+/// <returns>An identifier/handle for the callback registration, to be later used in unregistering.</returns>
+UINT16 ListenForBroadcasterMessage(GameServerLib* self, EchoVR::SymbolId msgId, BOOL isMsgReliable, VOID* func)
+{
+	// Subscribe to the provided message id.
+	EchoVR::DelegateProxy listenerProxy;
+	memset(&listenerProxy, 0, sizeof(listenerProxy));
+	listenerProxy.method[0] = 0xFFFFFFFFFFFFFFFF;
+	listenerProxy.instance = (VOID*)self;
+	listenerProxy.proxyFunc = func;
+
+	return EchoVR::BroadcasterListen(self->lobby->broadcaster, msgId, isMsgReliable, (VOID*)&listenerProxy, true);
 }
 
 /// <summary>
@@ -38,7 +46,7 @@ BOOL ConnectToServerDb(GameServerLib* self, EchoVR::Json* localConfig)
 /// <param name="msgId">The 64-bit symbol used to describe a message type/identifier to listen for.</param>
 /// <param name="func">The function to use as callback when a TCP/webosocket message of the given type is received.</param>
 /// <returns>None</returns>
-VOID ListenForTcpBroadcasterMessage(GameServerLib* self, EchoVR::SymbolId msgId, VOID* func)
+UINT16 ListenForTcpBroadcasterMessage(GameServerLib* self, EchoVR::SymbolId msgId, VOID* func)
 {
 	// Subscribe to the provided message id.
 	// Normally a proxy function is provided, which calls the underlying method provided, but we just use the proxy function callback to receive everything to keep it simple.
@@ -48,7 +56,7 @@ VOID ListenForTcpBroadcasterMessage(GameServerLib* self, EchoVR::SymbolId msgId,
 	listenerProxy.instance = (VOID*)self;
 	listenerProxy.proxyFunc = func;
 
-	EchoVR::TcpBroadcasterListen(self->lobby->tcpBroadcaster, msgId, 0, 0, 0, (VOID*)&listenerProxy, true);
+	return EchoVR::TcpBroadcasterListen(self->lobby->tcpBroadcaster, msgId, 0, 0, 0, (VOID*)&listenerProxy, true);
 }
 
 /// <summary>
@@ -63,28 +71,6 @@ VOID SendServerdbTcpMessage(GameServerLib* self, EchoVR::SymbolId msgId, VOID* m
 {
 	// Wrap the send call provided by the TCP broadcaster.
 	self->tcpBroadcasterData->SendToPeer(self->serverDbPeer, msgId, NULL, 0, msg, msgSize);
-}
-
-/// <summary>
-/// Subscribes to internal local events for a given message type. These are typically sent internally by the game
-/// to its self, or derived from connected peer's messages (UDP broadcast port forwards events). The provided
-/// function is used as a callback when a message of the type is received from any peer or onesself.
-/// </summary>
-/// <param name="self">The game server library which is listening for the message.</param>
-/// <param name="msgId">The 64-bit symbol used to describe a message type/identifier to listen for.</param>
-/// <param name="isMsgReliable">Indicates whether we are listening for events for messages sent over the reliable or mailbox game server message inbox types.</param>
-/// <param name="func">The function to use as callback when a broadcaster message of the given type is received.</param>
-/// <returns>None</returns>
-VOID ListenForBroadcasterMessage(GameServerLib* self, EchoVR::SymbolId msgId, BOOL isMsgReliable, VOID* func)
-{
-	// Subscribe to the provided message id.
-	EchoVR::DelegateProxy listenerProxy;
-	memset(&listenerProxy, 0, sizeof(listenerProxy));
-	listenerProxy.method[0] = 0xFFFFFFFFFFFFFFFF;
-	listenerProxy.instance = (VOID*)self;
-	listenerProxy.proxyFunc = func;
-
-	EchoVR::BroadcasterListen(self->lobby->broadcaster, msgId, isMsgReliable, (VOID*)&listenerProxy, true);
 }
 
 /// <summary>
@@ -122,21 +108,8 @@ VOID OnTcpMsgRegistrationFailure(GameServerLib* self, VOID* proxymthd, EchoVR::T
 /// <returns>None</returns>
 VOID OnTcpMessageStartSession(GameServerLib* self, VOID* proxymthd, EchoVR::TcpPeer sender, VOID* msg, VOID* unk, UINT64 msgSize)
 {
-	// Obtain our message from this.
-	ERGameServerStartSession* tcpMsgStartSession = (ERGameServerStartSession*)msg;
-
-	// Create an internal broadcast message that derives from this.
-	SNSLobbyStartSessionv4 msgStartSession;
-	memset(&msgStartSession, 0, sizeof(msgStartSession));
-	msgStartSession.sessionUuid = tcpMsgStartSession->sessionUuid;
-	msgStartSession.playerLimit = tcpMsgStartSession->playerLimit;
-	msgStartSession.lobbyType = tcpMsgStartSession->lobbyType;
-	msgStartSession.json = (CHAR*)&tcpMsgStartSession->jsonStart;
-	msgStartSession.jsonLen = strlen(msgStartSession.json);
-
 	// Set our session to active.
 	self->sessionActive = TRUE;
-	self->lobbyType = tcpMsgStartSession->lobbyType;
 
 	// Forward the received start session event to the internal broadcast.
 	Log(EchoVR::LogLevel::Info, "[ECHORELAY.GAMESERVER] Starting new session");
@@ -232,17 +205,17 @@ VOID* GameServerLib::Initialize(EchoVR::Lobby* lobby, EchoVR::Broadcaster* broad
 	this->broadcaster = broadcaster;
 	this->tcpBroadcasterData = lobby->tcpBroadcaster->data;
 
-	// Subscribe to websocket events.
-	ListenForTcpBroadcasterMessage(this, SYMBOL_TCPBROADCASTER_LOBBY_REGISTRATION_SUCCESS, (VOID*)OnTcpMsgRegistrationSuccess);
-	ListenForTcpBroadcasterMessage(this, SYMBOL_TCPBROADCASTER_LOBBY_REGISTRATION_FAILURE, (VOID*)OnTcpMsgRegistrationFailure);
-	ListenForTcpBroadcasterMessage(this, SYMBOL_TCPBROADCASTER_LOBBY_START_SESSION, (VOID*)OnTcpMessageStartSession);
-	ListenForTcpBroadcasterMessage(this, SYMBOL_TCPBROADCASTER_LOBBY_PLAYERS_ACCEPTED, (VOID*)OnTcpMsgPlayersAccepted);
-	ListenForTcpBroadcasterMessage(this, SYMBOL_TCPBROADCASTER_LOBBY_PLAYERS_REJECTED, (VOID*)OnTcpMsgPlayersRejected);
-	ListenForTcpBroadcasterMessage(this, SYMBOL_TCPBROADCASTER_LOBBY_SESSION_SUCCESS_V5, (VOID*)OnTcpMsgSessionSuccessv5);
-
 	// Subscribe to broadcaster events
-	ListenForBroadcasterMessage(this, SYMBOL_BROADCASTER_LOBBY_SESSION_STARTING, true, (VOID*)OnMsgSessionStarting);
-	ListenForBroadcasterMessage(this, SYMBOL_BROADCASTER_LOBBY_SESSION_ERROR, true, (VOID*)OnMsgSessionError);
+	this->broadcastSessionStartCBHandle = ListenForBroadcasterMessage(this, SYMBOL_BROADCASTER_LOBBY_SESSION_STARTING, TRUE, (VOID*)OnMsgSessionStarting);
+	this->broadcastSessionErrorCBHandle = ListenForBroadcasterMessage(this, SYMBOL_BROADCASTER_LOBBY_SESSION_ERROR, TRUE, (VOID*)OnMsgSessionError);
+
+	// Subscribe to websocket events.
+	this->tcpBroadcastRegSuccessCBHandle = ListenForTcpBroadcasterMessage(this, SYMBOL_TCPBROADCASTER_LOBBY_REGISTRATION_SUCCESS, (VOID*)OnTcpMsgRegistrationSuccess);
+	this->tcpBroadcastRegFailureCBHandle = ListenForTcpBroadcasterMessage(this, SYMBOL_TCPBROADCASTER_LOBBY_REGISTRATION_FAILURE, (VOID*)OnTcpMsgRegistrationFailure);
+	this->tcpBroadcastStartSessionCBHandle = ListenForTcpBroadcasterMessage(this, SYMBOL_TCPBROADCASTER_LOBBY_START_SESSION, (VOID*)OnTcpMessageStartSession);
+	this->tcpBroadcastPlayersAcceptedCBHandle = ListenForTcpBroadcasterMessage(this, SYMBOL_TCPBROADCASTER_LOBBY_PLAYERS_ACCEPTED, (VOID*)OnTcpMsgPlayersAccepted);
+	this->tcpBroadcastPlayersRejectedCBHandle = ListenForTcpBroadcasterMessage(this, SYMBOL_TCPBROADCASTER_LOBBY_PLAYERS_REJECTED, (VOID*)OnTcpMsgPlayersRejected);
+	this->tcpBroadcastSessionSuccessCBHandle = ListenForTcpBroadcasterMessage(this, SYMBOL_TCPBROADCASTER_LOBBY_SESSION_SUCCESS_V5, (VOID*)OnTcpMsgSessionSuccessv5);
 
 	// Log the interaction.
 	Log(EchoVR::LogLevel::Info, "[ECHORELAY.GAMESERVER] Initialized game server");
@@ -282,7 +255,7 @@ VOID GameServerLib::Update()
 		// TODO: If the entrant is marked dirty...
 		if (entrantData->userId.accountId != 0 && entrantData->dirty)
 		{
-			entrantData->dirty = entrantData->dirty;
+		
 		}
 	}
 }
@@ -304,19 +277,28 @@ VOID GameServerLib::UnkFunc1(UINT64 unk)
 /// <param name="serverId">The identifier to use for the game server when registering with ServerDB.</param>
 /// <param name="radId">TODO: Unknown.</param>
 /// <param name="regionId">A 64-bit symbol identifier indicating the region that the game server should be registering to.</param>
-/// <param name="lockedVersion">A version to use when locking out clients which request matching with a differing version.</param>
+/// <param name="versionLock">A version to use when locking out clients which request matching with a differing version.</param>
 /// <param name="localConfig">The game config containing service endpoints (located in ./_local/config.json from the root of game folder).</param>
 /// <returns>None</returns>
-VOID GameServerLib::RequestRegistration(INT64 serverId, CHAR* radId, EchoVR::SymbolId regionId, EchoVR::SymbolId lockedVersion, const EchoVR::Json* localConfig)
+VOID GameServerLib::RequestRegistration(INT64 serverId, CHAR* radId, EchoVR::SymbolId regionId, EchoVR::SymbolId versionLock, const EchoVR::Json* localConfig)
 {
 	// Store the registration information.
 	this->serverId = serverId;
 	this->regionId = regionId;
-	this->versionLock = lockedVersion;
+	this->versionLock = versionLock;
 
-	// Connect to the serverdb service
-	if (!ConnectToServerDb(this, (EchoVR::Json*)localConfig))
+	// Obtain the serverdb URI from our config (or fallback to default)
+	CHAR* serverDbServiceUri = EchoVR::JsonValueAsString((EchoVR::Json*)localConfig, (CHAR*)"serverdb_host", (CHAR*)"ws://localhost:777/serverdb", false);
+	EchoVR::UriContainer serverDbUriContainer;
+	memset(&serverDbUriContainer, 0, sizeof(serverDbUriContainer));
+	if (EchoVR::UriContainerParse(&serverDbUriContainer, serverDbServiceUri) != ERROR_SUCCESS)
+	{
+		Log(EchoVR::LogLevel::Error, "[ECHORELAY.GAMESERVER] Failed to register game server: error parsing serverdb service URI");
 		return;
+	}
+
+	// Connect to the serverdb websocket service
+	this->tcpBroadcasterData->CreatePeer(&this->serverDbPeer, (const EchoVR::UriContainer*)&serverDbUriContainer);
 
 	// Obtain address information about our game server broadcaster
 	sockaddr_in gameServerAddr = (*(sockaddr_in*)&this->broadcaster->data->addr);
@@ -353,6 +335,20 @@ VOID GameServerLib::Unregister() {
 	// TODO: These probably aren't necessary, but it would be good to..
 	// - Set lobbytype to public
 	// - Clear the JSON for lobby
+
+	// Unregister our broadcaster message listeners
+	EchoVR::BroadcasterUnlisten(this->broadcaster, this->broadcastSessionStartCBHandle);
+	EchoVR::BroadcasterUnlisten(this->broadcaster, this->broadcastSessionErrorCBHandle);
+
+	EchoVR::TcpBroadcasterUnlisten(this->lobby->tcpBroadcaster, this->tcpBroadcastRegSuccessCBHandle);
+	EchoVR::TcpBroadcasterUnlisten(this->lobby->tcpBroadcaster, this->tcpBroadcastRegFailureCBHandle);
+	EchoVR::TcpBroadcasterUnlisten(this->lobby->tcpBroadcaster, this->tcpBroadcastStartSessionCBHandle);
+	EchoVR::TcpBroadcasterUnlisten(this->lobby->tcpBroadcaster, this->tcpBroadcastPlayersAcceptedCBHandle);
+	EchoVR::TcpBroadcasterUnlisten(this->lobby->tcpBroadcaster, this->tcpBroadcastPlayersRejectedCBHandle);
+	EchoVR::TcpBroadcasterUnlisten(this->lobby->tcpBroadcaster, this->tcpBroadcastSessionSuccessCBHandle);
+
+	// Disconnect from server db.
+	this->tcpBroadcasterData->DestroyPeer(this->serverDbPeer);
 
 	// Log the interaction.
 	Log(EchoVR::LogLevel::Info, "[ECHORELAY.GAMESERVER] Unregistered game server");

@@ -47,6 +47,8 @@
             chkForceIntoAnySession = new CheckBox();
             chkPopulationOverPing = new CheckBox();
             groupBox1 = new GroupBox();
+            numValidateGameServersTimeout = new NumericUpDown();
+            chkValidateGameServers = new CheckBox();
             btnRegenerateAPIKey = new Button();
             txtServerDBApiKey = new TextBox();
             chkUseServerDBApiKeys = new CheckBox();
@@ -55,6 +57,7 @@
             ((System.ComponentModel.ISupportInitialize)numericTCPPort).BeginInit();
             groupBoxMatching.SuspendLayout();
             groupBox1.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)numValidateGameServersTimeout).BeginInit();
             SuspendLayout();
             // 
             // lblDatabaseType
@@ -213,7 +216,7 @@
             // btnSaveSettings
             // 
             btnSaveSettings.Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
-            btnSaveSettings.Location = new Point(12, 378);
+            btnSaveSettings.Location = new Point(12, 392);
             btnSaveSettings.Name = "btnSaveSettings";
             btnSaveSettings.Size = new Size(500, 23);
             btnSaveSettings.TabIndex = 6;
@@ -226,7 +229,7 @@
             groupBoxMatching.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             groupBoxMatching.Controls.Add(chkForceIntoAnySession);
             groupBoxMatching.Controls.Add(chkPopulationOverPing);
-            groupBoxMatching.Location = new Point(12, 293);
+            groupBoxMatching.Location = new Point(12, 309);
             groupBoxMatching.Name = "groupBoxMatching";
             groupBoxMatching.Size = new Size(500, 79);
             groupBoxMatching.TabIndex = 7;
@@ -260,15 +263,41 @@
             // groupBox1
             // 
             groupBox1.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            groupBox1.Controls.Add(numValidateGameServersTimeout);
+            groupBox1.Controls.Add(chkValidateGameServers);
             groupBox1.Controls.Add(btnRegenerateAPIKey);
             groupBox1.Controls.Add(txtServerDBApiKey);
             groupBox1.Controls.Add(chkUseServerDBApiKeys);
             groupBox1.Location = new Point(12, 222);
             groupBox1.Name = "groupBox1";
-            groupBox1.Size = new Size(500, 65);
+            groupBox1.Size = new Size(500, 81);
             groupBox1.TabIndex = 8;
             groupBox1.TabStop = false;
             groupBox1.Text = "ServerDB Settings";
+            // 
+            // numValidateGameServersTimeout
+            // 
+            numValidateGameServersTimeout.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            numValidateGameServersTimeout.Location = new Point(334, 48);
+            numValidateGameServersTimeout.Maximum = new decimal(new int[] { int.MaxValue, 0, 0, 0 });
+            numValidateGameServersTimeout.Minimum = new decimal(new int[] { 1, 0, 0, 0 });
+            numValidateGameServersTimeout.Name = "numValidateGameServersTimeout";
+            numValidateGameServersTimeout.Size = new Size(160, 23);
+            numValidateGameServersTimeout.TabIndex = 12;
+            numValidateGameServersTimeout.Value = new decimal(new int[] { 3000, 0, 0, 0 });
+            // 
+            // chkValidateGameServers
+            // 
+            chkValidateGameServers.AutoSize = true;
+            chkValidateGameServers.Checked = true;
+            chkValidateGameServers.CheckState = CheckState.Checked;
+            chkValidateGameServers.Location = new Point(6, 49);
+            chkValidateGameServers.Name = "chkValidateGameServers";
+            chkValidateGameServers.Size = new Size(329, 19);
+            chkValidateGameServers.TabIndex = 11;
+            chkValidateGameServers.Text = "Validate game servers with ping request (w/ timeout, ms):\r\n";
+            chkValidateGameServers.UseVisualStyleBackColor = true;
+            chkValidateGameServers.CheckedChanged += chkValidateGameServers_CheckedChanged;
             // 
             // btnRegenerateAPIKey
             // 
@@ -307,7 +336,7 @@
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(524, 409);
+            ClientSize = new Size(524, 423);
             Controls.Add(groupBox1);
             Controls.Add(groupBoxMatching);
             Controls.Add(btnSaveSettings);
@@ -325,6 +354,7 @@
             groupBoxMatching.PerformLayout();
             groupBox1.ResumeLayout(false);
             groupBox1.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)numValidateGameServersTimeout).EndInit();
             ResumeLayout(false);
         }
 
@@ -352,5 +382,7 @@
         private TextBox txtServerDBApiKey;
         private CheckBox chkUseServerDBApiKeys;
         private Button btnRegenerateAPIKey;
+        private CheckBox chkValidateGameServers;
+        private NumericUpDown numValidateGameServersTimeout;
     }
 }

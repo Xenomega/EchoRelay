@@ -26,9 +26,9 @@
         Spectator = 2,
 
         /// <summary>
-        /// TODO: This is unknown. From loose memory, might've been used as the team everyone is assigned to for social lobbies?
+        /// TODO: This is unverified. From loose memory, might've been used as the team everyone is assigned to for social lobbies?
         /// </summary>
-        Unknown = 3,
+        SocialLobbyParticipant = 3,
 
         /// <summary>
         /// The player is assigned or requesting to be assigned to a moderator team role, invisible to other players and able to fly around.

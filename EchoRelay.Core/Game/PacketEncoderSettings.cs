@@ -1,4 +1,4 @@
-﻿namespace EchoRelay.Core.Server.Services.ServerDB
+﻿namespace EchoRelay.Core.Game
 {
     /// <summary>
     /// Describes packet encoding settings for one party in a game server <-> client connection.
@@ -72,7 +72,7 @@
         public static explicit operator ulong(PacketEncoderSettings packetEncoderSettings)
         {
             ulong flags = (uint)(packetEncoderSettings.EncryptionEnabled ? 1 : 0);
-            flags |= (uint)(packetEncoderSettings.MacEnabled ? (1 << 1) : 0);
+            flags |= (uint)(packetEncoderSettings.MacEnabled ? 1 << 1 : 0);
             flags |= (ulong)packetEncoderSettings.MacDigestSize << 2;
             flags |= (ulong)packetEncoderSettings.MacPBKDF2IterationCount << 14;
             flags |= (ulong)packetEncoderSettings.MacKeySize << 26;

@@ -33,6 +33,8 @@ namespace EchoRelay.App.Forms.Dialogs
             chkStartServerOnStartup.Checked = Settings.StartServerOnStartup;
             chkPopulationOverPing.Checked = Settings.MatchingPopulationOverPing;
             chkForceIntoAnySession.Checked = Settings.MatchingForceIntoAnySessionOnFailure;
+            chkValidateGameServers.Checked = Settings.ServerDBValidateGameServers ?? false;
+            numValidateGameServersTimeout.Value = (int)(Settings?.ServerDBValidateGameServersTimeout ?? numValidateGameServersTimeout.Value);
 
             // Set the server DB api key
             txtServerDBApiKey.Text = Settings.ServerDBApiKey ?? "";
@@ -104,6 +106,8 @@ namespace EchoRelay.App.Forms.Dialogs
             Settings.MongoDBConnectionString = null; // TODO: currently unsupported
             Settings.StartServerOnStartup = chkStartServerOnStartup.Checked;
             Settings.ServerDBApiKey = newServerDbApiKey;
+            Settings.ServerDBValidateGameServers = chkValidateGameServers.Checked;
+            Settings.ServerDBValidateGameServersTimeout = (int)numValidateGameServersTimeout.Value;
             Settings.MatchingPopulationOverPing = chkPopulationOverPing.Checked;
             Settings.MatchingForceIntoAnySessionOnFailure = chkForceIntoAnySession.Checked;
 
@@ -144,6 +148,11 @@ namespace EchoRelay.App.Forms.Dialogs
         {
             // Regenerate the key.
             RegenerateServerDBApiKey();
+        }
+
+        private void chkValidateGameServers_CheckedChanged(object sender, EventArgs e)
+        {
+            numValidateGameServersTimeout.Enabled = chkValidateGameServers.Checked;
         }
     }
 }

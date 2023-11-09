@@ -1,6 +1,6 @@
 #pragma once
 
-#include "EchoVR.h"
+#include "echovr.h"
 
 
 // Symbols representing messages to the broadcaster
@@ -71,30 +71,4 @@ struct ERLobbyPlayerSessionsLocked {
 /// </summary>
 struct ERLobbyPlayerSessionsUnlocked {
 	CHAR unused;
-};
-
-/// <summary>
-/// A message sent from server to game server, describing a new session to be started.
-/// This is processed into a SNSLobbyStartSessionv4 before being forwarded as a local event.
-/// </summary>
-struct ERGameServerStartSession {
-	GUID sessionUuid;
-	UINT64 playerLimit;
-	EchoVR::LobbyType lobbyType;
-	BYTE padding[7];
-	CHAR jsonStart;
-};
-
-/// <summary>
-/// A message sent across the UDP game server broadcaster (or local events), indicating a new session should be started.
-/// This actually invokes the starting of the game session.
-/// </summary>
-struct SNSLobbyStartSessionv4
-{
-	GUID sessionUuid;
-	UINT64 playerLimit;
-	EchoVR::LobbyType lobbyType;
-	BYTE padding[7];
-	const CHAR* json; // 0x30?
-	UINT64 jsonLen; // 0x38?
 };

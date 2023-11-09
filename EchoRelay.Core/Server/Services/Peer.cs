@@ -26,6 +26,16 @@ namespace EchoRelay.Core.Server.Services
         /// </summary>
         internal WebSocket Connection { get; }
         /// <summary>
+        /// Indicates whether the peer is still connected.
+        /// </summary>
+        public bool Connected
+        {
+            get
+            {
+                return Connection.State == WebSocketState.Open;
+            }
+        }
+        /// <summary>
         /// Session data associated with a given <see cref="Service"/>.
         /// </summary>
         private object? _sessionData;

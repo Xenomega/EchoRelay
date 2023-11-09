@@ -173,6 +173,7 @@ namespace EchoRelay.Core.Server.Services.Matching
                 channel: matchingSession.Channel,
                 locked: false,
                 lobbyTypes: matchingSession.SearchLobbyTypes,
+                requestedTeam: matchingSession.TeamIndex,
                 unfilledServerOnly: true
             );
 
@@ -239,8 +240,8 @@ namespace EchoRelay.Core.Server.Services.Matching
                 if (Server.Settings.ForceIntoAnySessionIfCreationFails)
                 {
                     // Resolve the most populated available game server with open space and select it.
-                    selectedGameServer = Server.ServerDBService.Registry.FilterGameServers(locked: false, unfilledServerOnly: true, lobbyTypes: new LobbyType[] {LobbyType.Unassigned, LobbyType.Public})
-                        .MaxBy(x => (float)x.SessionPlayerCount / x.SessionPlayerLimit);
+                    selectedGameServer = Server.ServerDBService.Registry.FilterGameServers(locked: false, requestedTeam: matchingSession.TeamIndex, unfilledServerOnly: true, lobbyTypes: new LobbyType[] {LobbyType.Unassigned, LobbyType.Public})
+                        .MaxBy(x => (float)x.SessionPlayerCount / x.SessionPlayerLimits.TotalPlayerLimit);
                 } 
                 else
                 {
@@ -262,6 +263,7 @@ namespace EchoRelay.Core.Server.Services.Matching
                     channel: matchingSession.Channel,
                     locked: false,
                     lobbyTypes: matchingSession.SearchLobbyTypes,
+                    requestedTeam: matchingSession.TeamIndex,
                     unfilledServerOnly: true
                 );
                 
@@ -271,7 +273,7 @@ namespace EchoRelay.Core.Server.Services.Matching
                 if (Server.Settings.FavorPopulationOverPing)
                 {
                     // Select the game server which is most full.
-                    selectedGameServer = gameServers.MaxBy(x => (float)x.SessionPlayerCount / x.SessionPlayerLimit);
+                    selectedGameServer = gameServers.MaxBy(x => (float)x.SessionPlayerCount / x.SessionPlayerLimits.TotalPlayerLimit);
                 } 
                 else
                 {
@@ -279,7 +281,7 @@ namespace EchoRelay.Core.Server.Services.Matching
                     var sortedGameServers = gameServers.Select(gameServer => {
                         uint? pingMilliseconds = pingResultLookup.TryGetValue((gameServer.InternalAddress.ToUInt32(), gameServer.ExternalAddress.ToUInt32()), out uint p) ? p : uint.MaxValue;
                         return (gameServer, pingMilliseconds);
-                    }).OrderBy(x => x.gameServer.SessionStarted ? 0 : 1).ThenBy(x => x.pingMilliseconds).ThenBy(x => (float)x.gameServer.SessionPlayerCount / x.gameServer.SessionPlayerLimit);
+                    }).OrderBy(x => x.gameServer.SessionStarted ? 0 : 1).ThenBy(x => x.pingMilliseconds).ThenBy(x => (float)x.gameServer.SessionPlayerCount / x.gameServer.SessionPlayerLimits.TotalPlayerLimit);
 
                     // Select the first game server.
                     selectedGameServer = sortedGameServers.FirstOrDefault().gameServer;

@@ -40,13 +40,12 @@
             toolsToolStripMenuItem = new ToolStripMenuItem();
             startServerToolStripMenuItem = new ToolStripMenuItem();
             launchEchoVRToolStripMenuItem = new ToolStripMenuItem();
-            serverHeadlessToolStripMenuItem = new ToolStripMenuItem();
+            serverHeadlessThrottledToolStripMenuItem = new ToolStripMenuItem();
+            serverheadlessUnthrottledHighCPUToolStripMenuItem = new ToolStripMenuItem();
+            serverToolStripMenuItem = new ToolStripMenuItem();
             clientWindowedNoOVRToolStripMenuItem = new ToolStripMenuItem();
             clientWindowedOVRToolStripMenuItem = new ToolStripMenuItem();
-            offlineWindowedNoOVRToolStripMenuItem = new ToolStripMenuItem();
             clientOVRToolStripMenuItem = new ToolStripMenuItem();
-            offlineOVRToolStripMenuItem = new ToolStripMenuItem();
-            serverToolStripMenuItem = new ToolStripMenuItem();
             toolStripSeparator1 = new ToolStripSeparator();
             customToolStripMenuItem = new ToolStripMenuItem();
             settingsToolStripMenuItem = new ToolStripMenuItem();
@@ -64,23 +63,23 @@
             btnRevertChanges = new ToolStripButton();
             tabControlMain = new TabControl();
             tabServerInfo = new TabPage();
-            serverInfoControl = new EchoRelay.App.Forms.Controls.ServerInfoControl();
+            serverInfoControl = new App.Forms.Controls.ServerInfoControl();
             tabPeers = new TabPage();
-            peerConnectionsControl = new EchoRelay.App.Forms.Controls.PeerConnectionsControl();
+            peerConnectionsControl = new App.Forms.Controls.PeerConnectionsControl();
             tabGameServers = new TabPage();
-            gameServersControl = new EchoRelay.App.Forms.Controls.GameServersControl();
+            gameServersControl = new App.Forms.Controls.GameServersControl();
             tabStorage = new TabPage();
             tabControlStorage = new TabControl();
             tabStorageAccessControls = new TabPage();
-            accessControlListEditor = new EchoRelay.App.Forms.Controls.AccessControlListEditor();
+            accessControlListEditor = new App.Forms.Controls.AccessControlListEditor();
             tabStorageAccounts = new TabPage();
-            accountSelector = new EchoRelay.App.Forms.Controls.AccountSelector();
+            accountSelector = new App.Forms.Controls.AccountSelector();
             tabStorageChannelInfo = new TabPage();
-            channelInfoEditor = new EchoRelay.App.Forms.Controls.ChannelInfoEditor();
+            channelInfoEditor = new App.Forms.Controls.ChannelInfoEditor();
             tabStorageConfigs = new TabPage();
             tabStorageDocuments = new TabPage();
             tabStorageLoginSettings = new TabPage();
-            loginSettingsEditor = new EchoRelay.App.Forms.Controls.LoginSettingsEditor();
+            loginSettingsEditor = new App.Forms.Controls.LoginSettingsEditor();
             statusStripProgress = new StatusStrip();
             lblToolStripPadding = new ToolStripStatusLabel();
             lblStatusHeader = new ToolStripStatusLabel();
@@ -184,77 +183,69 @@
             // 
             // launchEchoVRToolStripMenuItem
             // 
-            launchEchoVRToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { serverToolStripMenuItem, clientWindowedNoOVRToolStripMenuItem, clientWindowedOVRToolStripMenuItem, offlineWindowedNoOVRToolStripMenuItem, clientOVRToolStripMenuItem, offlineOVRToolStripMenuItem, serverHeadlessToolStripMenuItem, toolStripSeparator1, customToolStripMenuItem });
+            launchEchoVRToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { serverHeadlessThrottledToolStripMenuItem, serverheadlessUnthrottledHighCPUToolStripMenuItem, serverToolStripMenuItem, clientWindowedNoOVRToolStripMenuItem, clientWindowedOVRToolStripMenuItem, clientOVRToolStripMenuItem, toolStripSeparator1, customToolStripMenuItem });
             launchEchoVRToolStripMenuItem.Name = "launchEchoVRToolStripMenuItem";
             launchEchoVRToolStripMenuItem.Size = new Size(180, 22);
             launchEchoVRToolStripMenuItem.Text = "Launch Echo VR";
             // 
-            // serverHeadlessToolStripMenuItem
+            // serverHeadlessThrottledToolStripMenuItem
             // 
-            serverHeadlessToolStripMenuItem.Name = "serverHeadlessToolStripMenuItem";
-            serverHeadlessToolStripMenuItem.ShortcutKeys = Keys.Control | Keys.D7;
-            serverHeadlessToolStripMenuItem.Size = new Size(257, 22);
-            serverHeadlessToolStripMenuItem.Text = "Server (headless)";
-            serverHeadlessToolStripMenuItem.Click += serverHeadlessToolStripMenuItem_Click;
+            serverHeadlessThrottledToolStripMenuItem.Name = "serverHeadlessThrottledToolStripMenuItem";
+            serverHeadlessThrottledToolStripMenuItem.ShortcutKeys = Keys.Control | Keys.D1;
+            serverHeadlessThrottledToolStripMenuItem.Size = new Size(324, 22);
+            serverHeadlessThrottledToolStripMenuItem.Text = "Server (headless, default tick rate)";
+            serverHeadlessThrottledToolStripMenuItem.Click += serverHeadlessThrottledToolStripMenuItem_Click;
+            // 
+            // serverheadlessUnthrottledHighCPUToolStripMenuItem
+            // 
+            serverheadlessUnthrottledHighCPUToolStripMenuItem.Name = "serverheadlessUnthrottledHighCPUToolStripMenuItem";
+            serverheadlessUnthrottledHighCPUToolStripMenuItem.ShortcutKeys = Keys.Control | Keys.D2;
+            serverheadlessUnthrottledHighCPUToolStripMenuItem.Size = new Size(324, 22);
+            serverheadlessUnthrottledHighCPUToolStripMenuItem.Text = "Server (headless, unthrottled, high CPU)";
+            serverheadlessUnthrottledHighCPUToolStripMenuItem.Click += serverheadlessUnthrottledHighCPUToolStripMenuItem_Click;
+            // 
+            // serverToolStripMenuItem
+            // 
+            serverToolStripMenuItem.Name = "serverToolStripMenuItem";
+            serverToolStripMenuItem.ShortcutKeys = Keys.Control | Keys.D3;
+            serverToolStripMenuItem.Size = new Size(324, 22);
+            serverToolStripMenuItem.Text = "Server (windowed)";
+            serverToolStripMenuItem.Click += serverToolStripMenuItem_Click;
             // 
             // clientWindowedNoOVRToolStripMenuItem
             // 
             clientWindowedNoOVRToolStripMenuItem.Name = "clientWindowedNoOVRToolStripMenuItem";
-            clientWindowedNoOVRToolStripMenuItem.ShortcutKeys = Keys.Control | Keys.D2;
-            clientWindowedNoOVRToolStripMenuItem.Size = new Size(257, 22);
-            clientWindowedNoOVRToolStripMenuItem.Text = "Client (windowed, no OVR)";
+            clientWindowedNoOVRToolStripMenuItem.ShortcutKeys = Keys.Control | Keys.D4;
+            clientWindowedNoOVRToolStripMenuItem.Size = new Size(324, 22);
+            clientWindowedNoOVRToolStripMenuItem.Text = "Client (windowed, demo profile)";
             clientWindowedNoOVRToolStripMenuItem.Click += clientWindowedNoOVRToolStripMenuItem_Click;
             // 
             // clientWindowedOVRToolStripMenuItem
             // 
             clientWindowedOVRToolStripMenuItem.Name = "clientWindowedOVRToolStripMenuItem";
-            clientWindowedOVRToolStripMenuItem.ShortcutKeys = Keys.Control | Keys.D3;
-            clientWindowedOVRToolStripMenuItem.Size = new Size(257, 22);
+            clientWindowedOVRToolStripMenuItem.ShortcutKeys = Keys.Control | Keys.D5;
+            clientWindowedOVRToolStripMenuItem.Size = new Size(324, 22);
             clientWindowedOVRToolStripMenuItem.Text = "Client (windowed)";
             clientWindowedOVRToolStripMenuItem.Click += clientWindowedOVRToolStripMenuItem_Click;
-            // 
-            // offlineWindowedNoOVRToolStripMenuItem
-            // 
-            offlineWindowedNoOVRToolStripMenuItem.Name = "offlineWindowedNoOVRToolStripMenuItem";
-            offlineWindowedNoOVRToolStripMenuItem.ShortcutKeys = Keys.Control | Keys.D4;
-            offlineWindowedNoOVRToolStripMenuItem.Size = new Size(257, 22);
-            offlineWindowedNoOVRToolStripMenuItem.Text = "Offline (windowed)";
-            offlineWindowedNoOVRToolStripMenuItem.Click += offlineWindowedNoOVRToolStripMenuItem_Click;
             // 
             // clientOVRToolStripMenuItem
             // 
             clientOVRToolStripMenuItem.Name = "clientOVRToolStripMenuItem";
-            clientOVRToolStripMenuItem.ShortcutKeys = Keys.Control | Keys.D5;
-            clientOVRToolStripMenuItem.Size = new Size(257, 22);
-            clientOVRToolStripMenuItem.Text = "Client";
+            clientOVRToolStripMenuItem.ShortcutKeys = Keys.Control | Keys.D6;
+            clientOVRToolStripMenuItem.Size = new Size(324, 22);
+            clientOVRToolStripMenuItem.Text = "Client (VR)";
             clientOVRToolStripMenuItem.Click += clientOVRToolStripMenuItem_Click;
-            // 
-            // offlineOVRToolStripMenuItem
-            // 
-            offlineOVRToolStripMenuItem.Name = "offlineOVRToolStripMenuItem";
-            offlineOVRToolStripMenuItem.ShortcutKeys = Keys.Control | Keys.D6;
-            offlineOVRToolStripMenuItem.Size = new Size(257, 22);
-            offlineOVRToolStripMenuItem.Text = "Offline";
-            offlineOVRToolStripMenuItem.Click += offlineOVRToolStripMenuItem_Click;
-            // 
-            // serverToolStripMenuItem
-            // 
-            serverToolStripMenuItem.Name = "serverToolStripMenuItem";
-            serverToolStripMenuItem.ShortcutKeys = Keys.Control | Keys.D1;
-            serverToolStripMenuItem.Size = new Size(257, 22);
-            serverToolStripMenuItem.Text = "Server";
-            serverToolStripMenuItem.Click += serverToolStripMenuItem_Click;
             // 
             // toolStripSeparator1
             // 
             toolStripSeparator1.Name = "toolStripSeparator1";
-            toolStripSeparator1.Size = new Size(254, 6);
+            toolStripSeparator1.Size = new Size(321, 6);
             // 
             // customToolStripMenuItem
             // 
             customToolStripMenuItem.Name = "customToolStripMenuItem";
             customToolStripMenuItem.ShortcutKeys = Keys.Control | Keys.G;
-            customToolStripMenuItem.Size = new Size(257, 22);
+            customToolStripMenuItem.Size = new Size(324, 22);
             customToolStripMenuItem.Text = "Custom";
             customToolStripMenuItem.Click += customToolStripMenuItem_Click;
             // 
@@ -275,7 +266,7 @@
             // aboutToolStripMenuItem
             // 
             aboutToolStripMenuItem.Name = "aboutToolStripMenuItem";
-            aboutToolStripMenuItem.Size = new Size(180, 22);
+            aboutToolStripMenuItem.Size = new Size(107, 22);
             aboutToolStripMenuItem.Text = "About";
             aboutToolStripMenuItem.Click += aboutToolStripMenuItem_Click;
             // 
@@ -317,7 +308,7 @@
             // btnToggleRunningState
             // 
             btnToggleRunningState.DisplayStyle = ToolStripItemDisplayStyle.Image;
-            btnToggleRunningState.Image = EchoRelay.App.Properties.Resources.play_button_icon;
+            btnToggleRunningState.Image = App.Properties.Resources.play_button_icon;
             btnToggleRunningState.ImageTransparentColor = Color.Magenta;
             btnToggleRunningState.Name = "btnToggleRunningState";
             btnToggleRunningState.Size = new Size(23, 22);
@@ -332,12 +323,12 @@
             // btnLaunchGameServer
             // 
             btnLaunchGameServer.DisplayStyle = ToolStripItemDisplayStyle.Image;
-            btnLaunchGameServer.Image = EchoRelay.App.Properties.Resources.launch_server_button_icon;
+            btnLaunchGameServer.Image = App.Properties.Resources.launch_server_button_icon;
             btnLaunchGameServer.ImageTransparentColor = Color.Magenta;
             btnLaunchGameServer.Name = "btnLaunchGameServer";
             btnLaunchGameServer.Size = new Size(23, 22);
             btnLaunchGameServer.Text = "Launch Game Server";
-            btnLaunchGameServer.Click += serverHeadlessToolStripMenuItem_Click;
+            btnLaunchGameServer.Click += serverHeadlessThrottledToolStripMenuItem_Click;
             // 
             // toolStripSeparator4
             // 
@@ -347,7 +338,7 @@
             // btnSaveChanges
             // 
             btnSaveChanges.DisplayStyle = ToolStripItemDisplayStyle.Image;
-            btnSaveChanges.Image = EchoRelay.App.Properties.Resources.save_button_icon;
+            btnSaveChanges.Image = App.Properties.Resources.save_button_icon;
             btnSaveChanges.ImageTransparentColor = Color.Magenta;
             btnSaveChanges.Name = "btnSaveChanges";
             btnSaveChanges.Size = new Size(23, 22);
@@ -357,7 +348,7 @@
             // btnRevertChanges
             // 
             btnRevertChanges.DisplayStyle = ToolStripItemDisplayStyle.Image;
-            btnRevertChanges.Image = EchoRelay.App.Properties.Resources.undo_button_icon;
+            btnRevertChanges.Image = App.Properties.Resources.undo_button_icon;
             btnRevertChanges.ImageTransparentColor = Color.Magenta;
             btnRevertChanges.Name = "btnRevertChanges";
             btnRevertChanges.Size = new Size(23, 22);
@@ -694,9 +685,7 @@
         private ToolStripSeparator toolStripSeparator1;
         private ToolStripMenuItem clientOVRToolStripMenuItem;
         private ToolStripMenuItem clientWindowedNoOVRToolStripMenuItem;
-        private ToolStripMenuItem serverHeadlessToolStripMenuItem;
-        private ToolStripMenuItem offlineOVRToolStripMenuItem;
-        private ToolStripMenuItem offlineWindowedNoOVRToolStripMenuItem;
+        private ToolStripMenuItem serverHeadlessThrottledToolStripMenuItem;
         private ToolStripMenuItem customToolStripMenuItem;
         private ToolStripMenuItem clientWindowedOVRToolStripMenuItem;
         private ToolStripMenuItem serverToolStripMenuItem;
@@ -740,5 +729,6 @@
         private EchoRelay.App.Forms.Controls.AccessControlListEditor accessControlListEditor;
         private ContextMenuStrip ctxMenuServerLog;
         private ToolStripMenuItem clearToolStripMenuItem;
+        private ToolStripMenuItem serverheadlessUnthrottledHighCPUToolStripMenuItem;
     }
 }

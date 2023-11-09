@@ -64,13 +64,9 @@ HRESULT RadPluginSetSymbolDebugMethodsMethod(VOID* a, VOID* b, VOID* c, VOID* d)
 }
 
 HRESULT RadPluginShutdown() {
-	// TODO: This is ugly, but for now the platform provider can panic from the server hacks + no ovr, etc.
-	// There is some state transition confusion to rectify.
-	// 
-	// As a temporary quick fix for panics which hang the app on close, we just force exit the whole process 
-	// when we detect shutdown.
+	// Free the server library in preparation of the library being unloaded.
 	delete g_ServerLib;
-	exit(1);
+
 	return ERROR_SUCCESS;
 }
 

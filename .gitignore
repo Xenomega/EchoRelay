@@ -236,3 +236,6 @@ ipch/
 
 # Nuget package cache
 packages/
+
+# EchoRelay.Cli
+EchoRelay.Cli/Properties/launchSettings.json

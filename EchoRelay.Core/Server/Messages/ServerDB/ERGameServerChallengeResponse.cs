@@ -5,6 +5,7 @@ namespace EchoRelay.Core.Server.Messages.ServerDB
     /// <summary>
     /// A message from game server to server, providing a response to <see cref="ERGameServerChallengeRequest"/> to be validated before registration.
     /// NOTE: This is an unofficial message created for Echo Relay.
+    /// TODO: This is unused in favor of lazy SERVERDB API key authentication.
     /// </summary>
     public class ERGameServerChallengeResponse : Message
     {
@@ -17,7 +18,7 @@ namespace EchoRelay.Core.Server.Messages.ServerDB
         /// <summary>
         /// The 
         /// </summary>
-        public byte[] InputPayload;
+        public byte[] SignedPayload;
         #endregion
 
         #region Constructor
@@ -26,15 +27,15 @@ namespace EchoRelay.Core.Server.Messages.ServerDB
         /// </summary>
         public ERGameServerChallengeResponse()
         {
-            InputPayload = Array.Empty<byte>();
+            SignedPayload = Array.Empty<byte>();
         }
         /// <summary>
         /// Initializes a new <see cref="ERGameServerChallengeResponse"/> with the provided arguments.
         /// </summary>
-        /// <param name="inputPayload">The data to be sent to the client, which they will be expected to transform accordingly.</param>
-        public ERGameServerChallengeResponse(byte[] inputPayload)
+        /// <param name="signedPayload">The data received from the client, which should be a signed version of the data sent to them.</param>
+        public ERGameServerChallengeResponse(byte[] signedPayload)
         {
-            InputPayload = inputPayload;
+            SignedPayload = signedPayload;
         }
         #endregion
 
@@ -46,13 +47,13 @@ namespace EchoRelay.Core.Server.Messages.ServerDB
         public override void Stream(StreamIO io)
         {
             if (io.StreamMode == StreamMode.Read)
-                InputPayload = new byte[io.Length - io.Position];
-            io.Stream(ref InputPayload);
+                SignedPayload = new byte[io.Length - io.Position];
+            io.Stream(ref SignedPayload);
         }
 
         public override string ToString()
         {
-            return $"{GetType().Name}(input_payload={Convert.ToHexString(InputPayload)})";
+            return $"{GetType().Name}(signed_payload={Convert.ToHexString(SignedPayload)})";
         }
         #endregion
     }

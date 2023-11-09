@@ -1,0 +1,13 @@
+ <Project>
+    <PropertyGroup>
+        <!--
+        If you intend to derive from this project, please give credit to the original repository (https://github.com/Xenomega/EchoRelay)
+        as stated in the README, and distinguish your project from mine (the original), so I am not confused as the author of your project/fork.
+        Thank you,
+        ~Xenomega (David Pokora)
+        -->
+        <Authors>Xenomega (David Pokora)</Authors>
+        <Company>Xenomega (David Pokora)</Company>
+        <Version>0.7.0</Version>
+    </PropertyGroup>
+  </Project>

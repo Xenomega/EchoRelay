@@ -3,18 +3,45 @@ using EchoRelay.Core.Server.Messages.Common;
 using EchoRelay.Core.Server.Messages.ServerDB;
 using System.Collections.Specialized;
 using System.Web;
+using static EchoRelay.Core.Server.Services.ServerDB.ServerDBService;
 
 namespace EchoRelay.Core.Server.Services.ServerDB
 {
     public class ServerDBService : Service
     {
+        #region Properties
+        /// <summary>
+        /// The registry maintaining all registered game servers.
+        /// </summary>
         public GameServerRegistry Registry { get; }
+        #endregion
+
+        #region Events
+        /// <summary>
+        /// Event of a peer failing game server registration.
+        /// </summary>
+        /// <param name="peer">The peer which failed registration.</param>
+        /// <param name="registrationRequest">The registration request which was denied.</param>
+        public delegate void GameServerRegistrationFailure(Peer peer, ERGameServerRegistrationRequest registrationRequest, string failureMessage);
+        /// <summary>
+        /// Event of a game server failing registration.
+        /// </summary>
+        public event GameServerRegistrationFailure? OnGameServerRegistrationFailure;
+        #endregion
+
+        #region Constructor
+        /// <summary>
+        /// Initializes a ServerDB service attached to the given server.
+        /// </summary>
+        /// <param name="server">The server to initialize the serverdb service with.</param>
         public ServerDBService(Server server) : base(server, "SERVERDB")
         {
             Registry = new GameServerRegistry();
             OnPeerDisconnected += ServerDBService_OnPeerDisconnected;
         }
+        #endregion
 
+        #region Functions
         private void ServerDBService_OnPeerDisconnected(Service service, Peer peer)
         {
             ClearPeerRegistration(peer);
@@ -90,12 +117,24 @@ namespace EchoRelay.Core.Server.Services.ServerDB
             // Validate the API key if we enforce one.
             if (Server.Settings.ServerDBApiKey != null && apiKey != Server.Settings.ServerDBApiKey)
             {
+                OnGameServerRegistrationFailure?.Invoke(sender, request, "Bad API key");
                 await sender.Send(new LobbyRegistrationFailure(LobbyRegistrationFailure.FailureCode.DatabaseError));
                 return;
             }
 
-            // Register the game server and update our session data with it.
-            RegisteredGameServer registeredGameServer = Registry.RegisterGameServer(sender, request);
+            // Create the game server object, then validate it.
+            RegisteredGameServer registeredGameServer = new RegisteredGameServer(Registry, sender, request);
+            if (Server.Settings.ServerDBValidateServerEndpoint && !(await GameServerPingClient.CheckAvailable(registeredGameServer, Server.Settings.ServerDBValidateServerEndpointTimeout)))
+            {
+                OnGameServerRegistrationFailure?.Invoke(sender, request, "Raw ping request/acknowledgement failed. The game server could not be connected to. It may not have exposed its ports properly.");
+                await sender.Send(new LobbyRegistrationFailure(LobbyRegistrationFailure.FailureCode.ConnectionFailed));
+                return;
+            }
+
+            // Add the game server to the registry
+            Registry.AddGameServer(registeredGameServer);
+
+            // Update our session data with the registered game server
             sender.SetSessionData(registeredGameServer);
 
             // Send our registration success message.
@@ -192,5 +231,6 @@ namespace EchoRelay.Core.Server.Services.ServerDB
             // Remove the provided player session from the associated game server.
             await registeredGameServer.RemovePlayer(request.PlayerSession);
         }
+        #endregion
     }
 }

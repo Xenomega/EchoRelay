@@ -79,7 +79,7 @@ namespace EchoVR
 	/// <summary>
 	/// Describes the level at which logging-related messages should be logged.
 	/// </summary>
-	enum LogLevel : INT32
+	enum class LogLevel : INT32
 	{
 		Debug = 0x1,
 		Info = 0x2,
@@ -248,11 +248,38 @@ namespace EchoVR
 	/// <summary>
 	/// Lobby type describes the privacy-access level of a game session.
 	/// </summary>
-	enum LobbyType : INT8
+	enum class LobbyType : INT8
 	{
 		Public = 0x0,
 		Private = 0x1,
 		Unassigned = 0x2,
+	};
+
+	/// <summary>
+	/// Describes the state of a net game
+	/// </summary>
+	enum class NetGameState : INT32
+	{
+		OSNeedsUpdate = -100,
+		OBBMissing = -99,
+		NoNetwork = -98,
+		BroadcasterError = -97,
+		CertificateError = -96,
+		ServiceUnavailable = -95,
+		LoginFailed = -94,
+		LoginReplaced = -93,
+		LobbyBooted = -92,
+		LoadFailed = -91,
+		LoggedOut = 0,
+		LoadingRoot = 1,
+		LoggingIn = 2,
+		LoggedIn = 3,
+		LoadingGlobal = 4,
+		Lobby = 5,
+		ServerLoading = 6,
+		LoadingLevel = 7,
+		ReadyForGame = 8,
+		InGame = 9
 	};
 
 	/// <summary>

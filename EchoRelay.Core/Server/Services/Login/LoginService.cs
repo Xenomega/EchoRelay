@@ -172,7 +172,7 @@ namespace EchoRelay.Core.Server.Services.Login
                 string displayName = request.UserId.PlatformCode == PlatformCode.DMO ? "Anonymous [DEMO]" : $"User [{RandomNumberGenerator.GetInt32(int.MaxValue).ToString("X")}]";
 
                 // Create an account for this user id. We use the platform identifier string as the display name.
-                account = new AccountResource(request.UserId, displayName, true, true, false);
+                account = new AccountResource(request.UserId, displayName, true, true, true);
                 account.Profile.Server.CreateTime = currentTimestamp;
             } 
             else
